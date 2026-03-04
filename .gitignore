@@ -121,3 +121,12 @@ dist/protocol.schema.json
 # Synthing
 **/.stfolder/
 .vercel
+
+# CareerClaw personal config (contains PII, never commit)
+config/profile.json
+*.resume.pdf
+gv_resume.pdf
+openclaw.careerclaw.json
+openclaw.careerclaw.json.bak*
+apps/dashboard/.env.local
+supabase/.temp/

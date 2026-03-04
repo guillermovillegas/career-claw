@@ -17,6 +17,25 @@ if [ -f "$CAREERCLAW_ROOT/.env" ]; then
   set +a
 fi
 
+# Load profile.json fields into shell variables via jq (requires jq)
+PROFILE_JSON="$CAREERCLAW_ROOT/config/profile.json"
+if [ -f "$PROFILE_JSON" ] && command -v jq &>/dev/null; then
+  PROFILE_FIRST_NAME=$(jq -r '.personal.first_name' "$PROFILE_JSON")
+  PROFILE_LAST_NAME=$(jq -r '.personal.last_name' "$PROFILE_JSON")
+  PROFILE_FULL_NAME="${PROFILE_FIRST_NAME} ${PROFILE_LAST_NAME}"
+  PROFILE_EMAIL=$(jq -r '.personal.email' "$PROFILE_JSON")
+  PROFILE_LOCATION=$(jq -r '.personal.location' "$PROFILE_JSON")
+  PROFILE_TECH_STACK=$(jq -r '.tech_stack // "TypeScript, React, Python"' "$PROFILE_JSON")
+  PROFILE_RESUME=$(jq -r '.professional.resume_filename // "resume.pdf"' "$PROFILE_JSON")
+  PROFILE_BACKGROUND=$(jq -r '.cover_letter.background_bullets // [] | map("- " + .) | join("\n")' "$PROFILE_JSON")
+  PROFILE_ROLE_GUIDE=$(jq -r '.cover_letter.role_matching // [] | map("- " + .) | join("\n")' "$PROFILE_JSON")
+else
+  echo "WARNING: config/profile.json not found or jq not installed. Using defaults." >&2
+  PROFILE_FULL_NAME="Your Name"
+  PROFILE_TECH_STACK="TypeScript, React, Python"
+  PROFILE_RESUME="resume.pdf"
+fi
+
 # Use the project's openclaw (dev version with latest model support)
 # Each script invocation gets a unique session to avoid lock conflicts
 openclaw_agent() {

@@ -1,0 +1,77 @@
+{
+  "_comment": "Copy this file to config/profile.json and fill in your details. See SETUP.md for instructions.",
+
+  "personal": {
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "email": "jane.doe.applies@gmail.com",
+    "phone": "5551234567",
+    "phone_formatted": "(555) 123-4567",
+    "location": "San Francisco, CA",
+    "zip_code": "94105",
+    "pronouns": "She/Her"
+  },
+
+  "online": {
+    "linkedin": "https://www.linkedin.com/in/janedoe",
+    "github": "https://github.com/janedoe",
+    "website": "https://janedoe.dev"
+  },
+
+  "professional": {
+    "current_company": "Acme Corp",
+    "current_title": "Senior Product Manager",
+    "years_total": "8",
+    "years_product": "5",
+    "years_ai": "3",
+    "years_leadership": "2",
+    "work_authorization": "US Citizen",
+    "needs_sponsorship": false,
+    "resume_filename": "resume.pdf"
+  },
+
+  "target_roles": {
+    "titles": [
+      "Senior Product Manager",
+      "Staff Product Manager",
+      "Head of Product",
+      "Technical Product Manager",
+      "Staff Engineer"
+    ],
+    "industries": ["AI/ML", "B2B SaaS", "FinTech"],
+    "preferred_work_mode": "remote",
+    "min_score": 70,
+    "blacklisted_companies": ["competitor.com"]
+  },
+
+  "tech_stack": "TypeScript, React, Next.js, Python, AI/ML, SQL",
+
+  "form_answers": {
+    "professional_summary": "Product leader with 8 years of experience scaling B2B SaaS products. Led cross-functional teams of 12+ across three product lines generating $40M ARR. Shipped AI-powered features that improved user retention by 35%.",
+
+    "ai_experience": "Built and shipped ML-powered recommendation engine serving 2M daily users. Led integration of LLM capabilities into enterprise workflow platform, reducing manual processing time by 60%. Experience with production ML pipelines, model evaluation, and A/B testing at scale.",
+
+    "why_interested": "This role aligns with my experience building AI-powered products at scale. I bring both strategic product vision and hands-on technical depth from leading product development across three successful B2B platforms. I'm eager to apply that experience to new challenges.",
+
+    "additional_info": "8 years of product and engineering experience across B2B SaaS and AI/ML. Built recommendation systems serving millions, managed $40M ARR product portfolio, and led teams of 12+. Strong technical background with hands-on coding ability.",
+
+    "compensation_expectation": "200000",
+    "compensation_text": "Open to discussion based on total package"
+  },
+
+  "cover_letter": {
+    "background_bullets": [
+      "Acme Corp: Built ML recommendation engine serving 2M users, 35% retention improvement",
+      "PreviousCo: Managed $40M ARR product portfolio, led 12-person cross-functional team",
+      "Technical: TypeScript, React, Next.js, Python, ML/AI pipelines, production deployments",
+      "Style: data-driven product leader, zero-to-one builder, cross-functional alignment"
+    ],
+    "role_matching": [
+      "AI/ML Engineer → lead with ML recommendation engine, mention production pipelines",
+      "Product Manager → lead with $40M ARR portfolio, cross-functional leadership",
+      "VP/Director → lead with scale + team leadership + revenue impact",
+      "Staff Engineer → lead with technical depth, full-stack, production ML"
+    ],
+    "banned_words": "excited, passionate, thrilled, love, leverage, synergy, innovative, cutting-edge, world-class, dynamic, rockstar, guru, thought leader, disruptive, feel free, reach out, circle back, hit the ground running, move the needle, great fit, perfect fit, exclamation points, I believe, I feel, I think, proud to bring, aligns perfectly, aligns with, I am confident, I am writing to, I am applying, Dear Hiring Manager, To Whom It May Concern"
+  }
+}
