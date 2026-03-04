@@ -1,0 +1,13 @@
+{
+  "id": "jobclaw-tracker",
+  "name": "CareerClaw Tracker",
+  "description": "Track job applications, freelance proposals, clients, outreach, and follow-ups in Supabase.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "supabaseUrl": { "type": "string" },
+      "supabaseKey": { "type": "string" }
+    }
+  }
+}
