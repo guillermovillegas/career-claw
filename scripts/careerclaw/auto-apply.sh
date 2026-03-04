@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-RESUME_PATH="$CAREERCLAW_ROOT/gv_resume.pdf"
+RESUME_PATH="$CAREERCLAW_ROOT/${PROFILE_RESUME}"
 APPS_BEFORE=$(db_count applications)
 TODAY=$(date '+%Y-%m-%d')
 START_TS=$(date +%s)
@@ -144,7 +144,7 @@ for i in $(seq 0 $((COUNT - 1))); do
   echo ""
 
   openclaw_agent --message "$(cat <<PROMPT
-You are applying for Guillermo Villegas to this job (already saved in the tracker, job_id: ${JOB_ID}).
+You are applying for ${PROFILE_FULL_NAME} to this job (already saved in the tracker, job_id: ${JOB_ID}).
 
 JOB DETAILS:
 - Title:   ${JOB_TITLE}
@@ -156,26 +156,18 @@ JOB DETAILS:
 STEP 1 — Generate a tailored cover letter (100-160 words, two short paragraphs):
 
 PARAGRAPH 1 (metric + why this company):
-Lead with Guillermo's most relevant career win that matches the role, then connect it to ONE specific thing the company is doing (product, initiative, or known challenge).
+Lead with the applicant's most relevant career win that matches the role, then connect it to ONE specific thing the company is doing (product, initiative, or known challenge).
 
 PARAGRAPH 2 (supporting proof + clean close):
-One more concrete proof point, then a clean close. End with just: Guillermo Villegas
+One more concrete proof point, then a clean close. End with just: ${PROFILE_FULL_NAME}
 
 BANNED WORDS (never use): excited, passionate, thrilled, love, leverage, synergy, innovative, cutting-edge, world-class, dynamic, rockstar, guru, thought leader, disruptive, feel free, reach out, circle back, hit the ground running, move the needle, great fit, perfect fit, exclamation points, I believe, I feel, I think
 
-GUILLERMO'S BACKGROUND (use to tailor):
-- CPO at Levee: built computer vision system 92%+ accuracy, 60% inspection time reduction, PhocusWire Global Pitch Winner, HITEC \$25K AI competition winner
-- Chamberlain Group: managed \$250M smart-home portfolio, turned Ring partnership from -11% to +68% IRR
-- 2025: 3.28M lines of production code, 132 projects — TypeScript, React, Next.js, Supabase, Python, AI/ML
-- Stack: full-stack SaaS, real-time analytics, LLM integrations
-- Style: zero-to-one builder, production AI with measurable business impact
+APPLICANT BACKGROUND (use to tailor):
+${PROFILE_BACKGROUND}
 
 ROLE MATCHING GUIDE:
-- AI/ML Engineer → lead with Levee CV system (92%, 60% time cut), mention full-stack AI platform
-- Product Manager → lead with Chamberlain (\$250M portfolio, +68% IRR) or Levee (zero-to-one + competition wins)
-- Forward Deployed / Solutions Engineer → lead with Levee hands-on shipping, mention 3.28M lines / 132 projects
-- VP/Director Product → lead with Chamberlain scale + Levee zero-to-one
-- Staff/Principal Engineer → lead with 3.28M lines / 132 projects, multi-tenant SaaS
+${PROFILE_ROLE_GUIDE}
 
 STEP 2 — Save the application:
 Call jobclaw create_application with EXACTLY these field values:

@@ -29,7 +29,7 @@ if [ ! -f "$BODY_FILE" ]; then
   exit 1
 fi
 
-FROM="guillermo.villegas.applies@gmail.com"
+FROM="${PROFILE_EMAIL:-${GMAIL_USER:-your-email@gmail.com}}"
 LOG_DIR="$HOME/.careerclaw"
 LOG_FILE="$LOG_DIR/email-log.jsonl"
 mkdir -p "$LOG_DIR"

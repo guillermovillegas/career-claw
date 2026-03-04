@@ -34,7 +34,8 @@ for (const line of readFileSync(join(ROOT, ".env"), "utf8").split("\n")) {
 
 const SUPABASE_URL = env.JOBCLAW_SUPABASE_URL;
 const SUPABASE_KEY = env.JOBCLAW_SUPABASE_KEY;
-const RESUME_PATH = join(ROOT, "gv_resume.1pdf");
+import { getResumeFilename } from "../../config/load-profile.mjs";
+const RESUME_PATH = join(ROOT, getResumeFilename());
 
 // ─── Parse flags ─────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -44,18 +45,9 @@ const scoreIdx = args.indexOf("--min-score");
 const LIMIT = limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : 50;
 const MIN_SCORE = scoreIdx !== -1 ? parseInt(args[scoreIdx + 1], 10) : 50;
 
-// ─── Profile ─────────────────────────────────────────────────────────────────
-const PROFILE = {
-  first_name: "Guillermo",
-  last_name: "Villegas",
-  email: "guillermo.villegas.applies@gmail.com",
-  phone: "7735511393",
-  location: "Chicago, IL",
-  linkedin: "https://www.linkedin.com/in/guillermo-villegas-3080a011b",
-  github: "https://github.com/guillermovillegas",
-  website: "https://GuillermoTheEngineer.vercel.app",
-  current_company: "Levee",
-};
+// ─── Profile (loaded from config/profile.json) ─────────────────────────────
+import { getFormProfile } from "../../config/load-profile.mjs";
+const PROFILE = getFormProfile();
 
 // ─── Supabase helpers ─────────────────────────────────────────────────────────
 async function supabaseGet(path) {
@@ -140,7 +132,7 @@ async function submitGreenhouse(job, application) {
   // Resume as base64 content (avoids Blob streaming issues)
   const resumeB64 = readFileSync(RESUME_PATH).toString("base64");
   form.append("resume_content", resumeB64);
-  form.append("resume_content_filename", "Guillermo_Villegas_Resume.pdf");
+  form.append("resume_content_filename", `${PROFILE.first_name}_${PROFILE.last_name}_Resume.pdf`);
 
   // Cover letter as base64 content
   if (application.cover_letter) {
@@ -237,7 +229,7 @@ async function submitLever(job, application) {
 
   const resumeB64 = readFileSync(RESUME_PATH).toString("base64");
   form.append("resume", resumeB64);
-  form.append("resume_filename", "Guillermo_Villegas_Resume.pdf");
+  form.append("resume_filename", `${PROFILE.first_name}_${PROFILE.last_name}_Resume.pdf`);
 
   if (DRY_RUN) {
     return { success: true, reason: "dry-run", platform: "lever", company, postingId };

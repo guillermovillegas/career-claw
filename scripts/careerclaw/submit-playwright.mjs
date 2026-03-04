@@ -15,6 +15,12 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { ImapFlow } from "imapflow";
 import { chromium } from "playwright";
+import {
+  getFormProfile,
+  getResumeFilename,
+  getFormAnswers,
+  loadProfile,
+} from "../../config/load-profile.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -30,7 +36,7 @@ for (const line of readFileSync(join(ROOT, ".env"), "utf8").split("\n")) {
 
 const SUPABASE_URL = env.JOBCLAW_SUPABASE_URL;
 const SUPABASE_KEY = env.JOBCLAW_SUPABASE_KEY;
-const RESUME_PATH = join(ROOT, "gv_resume.pdf");
+const RESUME_PATH = join(ROOT, getResumeFilename());
 
 // ─── Parse flags ──────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -41,23 +47,9 @@ const scoreIdx = args.indexOf("--min-score");
 const LIMIT = limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : 50;
 const MIN_SCORE = scoreIdx !== -1 ? parseInt(args[scoreIdx + 1], 10) : 50;
 
-// ─── Profile ──────────────────────────────────────────────────────────────────
-const P = {
-  first_name: "Guillermo",
-  last_name: "Villegas",
-  email: "guillermo.villegas.applies@gmail.com",
-  phone: "7735511393",
-  phone_formatted: "(773) 551-1393",
-  location: "Chicago, IL",
-  linkedin: "https://www.linkedin.com/in/guillermo-villegas-3080a011b",
-  github: "https://github.com/guillermovillegas",
-  website: "https://GuillermoTheEngineer.vercel.app",
-  current_company: "Levee",
-  years_total: "10",
-  years_product: "6",
-  years_ai: "5",
-  years_leadership: "4",
-};
+// ─── Profile (loaded from config/profile.json) ──────────────────────────────
+const P = getFormProfile();
+const FA = getFormAnswers();
 
 // ─── Form Q&A tracker — logs every field we fill for auditing ────────────────
 const formLog = []; // Accumulates { company, question, answer, field_id } per submission
@@ -508,35 +500,18 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           // AI project / product experience example
-          await el
-            .fill(
-              "As CPO at Levee, I built and launched an AI-powered B2B SaaS hospitality platform with proprietary computer vision achieving 92%+ accuracy, reducing inspection time 60% across a 605-room Marriott pilot. I owned the full ML infrastructure roadmap (YOLO/RT-DETR models on GCP), product strategy for our multi-tenant management portal, and a mobile app with offline-first architecture. Previously at Chamberlain Group, I drove a $250M+ smart-home product portfolio and led the Ring partnership that achieved +68% IRR transformation. Our work at Levee won the PhocusWire Global Startup Pitch award and multiple AI innovation recognitions.",
-            )
-            .catch(() => {});
+          await el.fill(FA.ai_experience || FA.professional_summary || "").catch(() => {});
         } else if (
           /why.*interest|why.*role|why.*company|why.*want|what.*excites|what.*attracts|motivation/i.test(
             lbl,
           )
         ) {
-          // "Why are you interested in this role/company?" questions
-          await el
-            .fill(
-              "I'm drawn to this role because it combines strategic product leadership with hands-on AI/ML product development — exactly where my experience lies. With 10 years scaling B2B SaaS products and 5 years building production AI systems, I bring both the strategic vision and technical depth to drive meaningful product outcomes. I'm particularly excited about the opportunity to apply my experience building zero-to-one AI products to a new challenge.",
-            )
-            .catch(() => {});
+          await el.fill(FA.why_interested || "").catch(() => {});
         } else if (/tell us|anything.*add|additional.*info|anything.*else/i.test(lbl)) {
-          await el
-            .fill(
-              "10 years of product and engineering leadership across AI, B2B SaaS, IoT, and FinTech. Co-Founder/CPO at Levee where I built production computer vision and AI systems. Previously drove $250M+ portfolio at Chamberlain Group. Chicago Product Management Association organizer for 7+ years. PhocusWire Global Startup Pitch Award winner.",
-            )
-            .catch(() => {});
+          await el.fill(FA.additional_info || FA.professional_summary || "").catch(() => {});
         } else {
           // Other required textarea — provide concise professional summary
-          await el
-            .fill(
-              "Product leader with 10 years of experience scaling B2B SaaS across AI, IoT, hospitality, and FinTech. Co-Founder/CPO at Levee (AI hospitality platform). Previously drove $250M+ product portfolio at Chamberlain Group. PhocusWire Global Startup Pitch Award winner.",
-            )
-            .catch(() => {});
+          await el.fill(FA.professional_summary || "").catch(() => {});
         }
       } else {
         // Regular text input
@@ -559,13 +534,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/twitter|x\.com/i.test(lbl)) {
           // Skip — no Twitter
         } else if (/salary.*expect|desired.*salary/i.test(lbl)) {
-          await el.fill("250000").catch(() => {}); // 250k — PM/Staff Engineer range
+          await el.fill(FA.compensation_expectation || "200000").catch(() => {});
         } else if (/what state|state.*located|located.*state/i.test(lbl)) {
           await el.fill("Illinois").catch(() => {});
         } else if (/phonetic|pronounce|pronunciation/i.test(lbl)) {
-          await el.fill("Gee-YAIR-mo vee-YEH-gas").catch(() => {});
+          // Skip — pronunciation is too personal to auto-fill
         } else if (/pronoun/i.test(lbl)) {
-          await el.fill("He/him").catch(() => {});
+          await el.fill(FA.pronouns || "").catch(() => {});
         } else if (/know anyone|anyone.*at.*company|referral.*contact|do you know/i.test(lbl)) {
           await el.fill("No").catch(() => {});
         } else if (/referred.by|who referred|referral.*name|referrer/i.test(lbl)) {
@@ -576,7 +551,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/^state$|^state\/province$|state.*residence/i.test(lbl)) {
           await el.fill("IL").catch(() => {});
         } else if (/^zip$|^zip code$|postal.*code/i.test(lbl)) {
-          await el.fill("60614").catch(() => {});
+          await el.fill(FA.zip_code || "").catch(() => {});
         } else if (/current.*company|company.*name|employer/i.test(lbl)) {
           await el.fill(P.current_company).catch(() => {});
         } else if (/programming.*language|language.*proficient|coding.*language/i.test(lbl)) {
@@ -586,42 +561,39 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (
           /compensation.*expect|expect.*compensation|salary.*expect|desired.*salary/i.test(lbl)
         ) {
-          await el.fill("250000").catch(() => {});
+          await el.fill(FA.compensation_expectation || "200000").catch(() => {});
         } else if (
           /describe.*experience|your.*experience|tell.*us.*about|experience.*owning|experience.*with/i.test(
             lbl,
           )
         ) {
-          await el
-            .fill(
-              "10 years of product leadership across AI, B2B SaaS, IoT, and FinTech. As CPO at Levee, built AI-powered hospitality platform with computer vision (92%+ accuracy), winning PhocusWire Global Pitch Award. At Chamberlain Group, drove $250M+ product portfolio with +68% IRR on Ring partnership. 5 years hands-on AI/ML experience, 6 years product management.",
-            )
-            .catch(() => {});
+          await el.fill(FA.ai_experience || FA.professional_summary || "").catch(() => {});
         } else if (/physical.*address|mailing.*address|full.*address|street.*address/i.test(lbl)) {
-          await el.fill("Chicago, IL 60614").catch(() => {});
+          await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
         } else if (/visa.*status|current.*visa|immigration.*status/i.test(lbl)) {
-          await el.fill("US Citizen").catch(() => {});
+          await el.fill(FA.work_authorization || "").catch(() => {});
         } else if (/legal.*address|full.*address|home.*address|residential.*address/i.test(lbl)) {
-          await el.fill("Chicago, IL 60614").catch(() => {});
+          await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
         } else if (/current.*location|where.*located|location.*city|your.*location/i.test(lbl)) {
-          await el.fill("Chicago, IL").catch(() => {});
+          await el.fill(P.location).catch(() => {});
         } else if (
           /target.*compensation|compensation.*range|desired.*comp|total.*comp|expected.*comp/i.test(
             lbl,
           )
         ) {
-          await el.fill("Open to discussion based on total package").catch(() => {});
+          await el.fill(FA.compensation_text || "Open to discussion").catch(() => {});
         } else if (
           /elaborate|please.*explain.*visa|if.*yes.*elaborate|sponsorship.*detail/i.test(lbl)
         ) {
           // Visa sponsorship "If yes, please elaborate" text fields
-          await el.fill("N/A — US Citizen, no sponsorship required.").catch(() => {});
+          await el.fill(`N/A — ${FA.work_authorization}, no sponsorship required.`).catch(() => {});
         } else if (/^company.*name$|^company$/i.test(lbl)) {
           // Work history company name field
-          await el.fill("Levee").catch(() => {});
+          await el.fill(P.current_company).catch(() => {});
         } else if (/^title$|^job.*title$|^position$/i.test(lbl)) {
           // Work history title field
-          await el.fill("Chief Product Officer").catch(() => {});
+          const prof = loadProfile().professional;
+          await el.fill(prof.current_title || "").catch(() => {});
         } else if (/start.*year|year.*start/i.test(lbl)) {
           await el.fill("2023").catch(() => {});
         } else if (/end.*year|year.*end/i.test(lbl)) {
@@ -1147,23 +1119,24 @@ async function submitAshby(page, job, coverLetter) {
           continue;
         } // already filled
         if (/city|location|where.*located/i.test(lbl)) {
-          await textInput.fill("Chicago, IL").catch(() => {});
+          await textInput.fill(P.location).catch(() => {});
         } else if (/how many years|years of/i.test(lbl)) {
           if (/ai|ml|machine learning/i.test(lbl)) {
-            await textInput.fill("5").catch(() => {});
+            await textInput.fill(P.years_ai).catch(() => {});
           } else if (/product|pm\b/i.test(lbl)) {
-            await textInput.fill("6").catch(() => {});
+            await textInput.fill(P.years_product).catch(() => {});
           } else if (/lead|manage/i.test(lbl)) {
-            await textInput.fill("4").catch(() => {});
+            await textInput.fill(P.years_leadership).catch(() => {});
           } else {
-            await textInput.fill("10").catch(() => {});
+            await textInput.fill(P.years_total).catch(() => {});
           }
         } else if (/current company|employer/i.test(lbl)) {
-          await textInput.fill("Levee").catch(() => {});
+          await textInput.fill(P.current_company).catch(() => {});
         } else if (/current title|job title/i.test(lbl)) {
-          await textInput.fill("Chief Product Officer").catch(() => {});
+          const prof = loadProfile().professional;
+          await textInput.fill(prof.current_title || "").catch(() => {});
         } else if (/salary|compensation/i.test(lbl)) {
-          await textInput.fill("Open to discussion").catch(() => {});
+          await textInput.fill(FA.compensation_text || "Open to discussion").catch(() => {});
         } else if (/start date|earliest.*start|when.*start/i.test(lbl)) {
           await textInput.fill("Immediately / 2 weeks notice").catch(() => {});
         } else if (/first name/i.test(lbl)) {
@@ -1171,7 +1144,7 @@ async function submitAshby(page, job, coverLetter) {
         } else if (/last name/i.test(lbl)) {
           await textInput.fill(P.last_name).catch(() => {});
         } else if (/pronouns/i.test(lbl)) {
-          await textInput.fill("He/Him").catch(() => {});
+          await textInput.fill(FA.pronouns || "").catch(() => {});
         }
         continue;
       }
@@ -1186,17 +1159,9 @@ async function submitAshby(page, job, coverLetter) {
         if (/cover letter/i.test(lbl)) {
           await textarea.fill(coverLetter).catch(() => {});
         } else if (/why.*interest|why.*apply|why.*role|why.*company|what draws you/i.test(lbl)) {
-          await textarea
-            .fill(
-              "I'm drawn to this role because it aligns with my experience building AI-powered products at scale. As CPO at Levee, I've led development of computer vision and LLM-integrated platforms deployed across 10,000+ hotel rooms. I'm eager to bring that same product vision and technical depth to your team.",
-            )
-            .catch(() => {});
+          await textarea.fill(FA.why_interested || "").catch(() => {});
         } else if (/tell us about|describe.*experience|additional info/i.test(lbl)) {
-          await textarea
-            .fill(
-              "10 years of product and engineering experience across B2B SaaS, AI/ML, IoT, and FinTech. Built computer vision systems at 92%+ accuracy, managed $250M+ portfolios, and delivered 60% efficiency improvements through AI automation.",
-            )
-            .catch(() => {});
+          await textarea.fill(FA.additional_info || FA.professional_summary || "").catch(() => {});
         }
         continue;
       }
@@ -1328,9 +1293,21 @@ async function submitIcims(page, job, coverLetter) {
       ['input[id*="Phone"], input[name*="Phone"], input[type="tel"]'],
       P.phone_formatted,
     );
-    await tryFill(page, ['input[id*="Address1"], input[name*="Address1"]'], "Chicago, IL 60614");
-    await tryFill(page, ['input[id*="City"], input[name*="City"]'], "Chicago");
-    await tryFill(page, ['input[id*="Zip"], input[name*="Zip"], input[id*="PostalCode"]'], "60614");
+    await tryFill(
+      page,
+      ['input[id*="Address1"], input[name*="Address1"]'],
+      `${P.location} ${FA.zip_code}`.trim(),
+    );
+    await tryFill(
+      page,
+      ['input[id*="City"], input[name*="City"]'],
+      P.location.split(",")[0].trim(),
+    );
+    await tryFill(
+      page,
+      ['input[id*="Zip"], input[name*="Zip"], input[id*="PostalCode"]'],
+      FA.zip_code,
+    );
 
     // Resume upload
     const resumeInput = page.locator('input[type="file"]').first();

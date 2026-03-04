@@ -35,7 +35,7 @@ CRITICAL URL RULE: Only save URLs matching linkedin.com/jobs/view/NUMERICID — 
 
 SCORING (required for every job):
 Skills(0-40) + Seniority(0-20) + Industry(0-15) + Comp(0-15) + Location(0-10) + full-time(+10) + remote(+5)
-Guillermo's stack: TypeScript, React, Next.js, Supabase, AI/ML, Python — score accordingly.
+Applicant's stack: ${PROFILE_TECH_STACK} — score accordingly.
 
 For each result scoring 70+:
 - Extract: title, company, location, salary range if visible in snippet
@@ -93,7 +93,7 @@ Search queries (run via web_search):
 
 SCORING (required):
 Skills(0-40) + Seniority(0-20) + Industry(0-15) + Comp(0-15) + Location(0-10) + full-time(+10) + remote(+5)
-Guillermo's stack: TypeScript, React, Next.js, AI/ML — score accordingly.
+Applicant's stack: ${PROFILE_TECH_STACK} — score accordingly.
 
 For each result scoring 70+:
 - Call jobclaw create_job with:
@@ -154,7 +154,7 @@ Search queries (run via web_search):
 
 SCORING (required):
 Skills(0-40) + Budget clarity(0-20) + Seniority fit(0-20) + Recency(0-20)
-Guillermo's stack: TypeScript, React, Next.js, AI/ML — score accordingly.
+Applicant's stack: ${PROFILE_TECH_STACK} — score accordingly.
 
 For each result scoring 65+:
 - Call jobclaw create_job with:

@@ -6,19 +6,39 @@
  * Usage: node direct-apply.mjs [--limit N] [--min-score N] [--dry-run]
  */
 
+import { readFileSync } from "fs";
 import http from "http";
 import https from "https";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { buildCoverLetterPrompt } from "../../config/load-profile.mjs";
 
-// ─── Config ─────────────────────────────────────────────────────────────────
-const SUPABASE_URL = "https://qxqbozdmzrxbtiutmtqb.supabase.co";
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4cWJvemRtenJ4YnRpdXRtdHFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTk1NjczNywiZXhwIjoyMDg3NTMyNzM3fQ.CY154v-YBDHxSLNvszFi0dm2pDqO035EBdymMZjcUD8";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, "../..");
+
+// ─── Config (loaded from .env) ──────────────────────────────────────────────
+const envFile = join(ROOT, ".env");
+const envVars = {};
+try {
+  for (const line of readFileSync(envFile, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m) {
+      envVars[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    }
+  }
+} catch {}
+
+const SUPABASE_URL = envVars.JOBCLAW_SUPABASE_URL || process.env.JOBCLAW_SUPABASE_URL;
+const SUPABASE_KEY = envVars.JOBCLAW_SUPABASE_KEY || process.env.JOBCLAW_SUPABASE_KEY;
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("ERROR: JOBCLAW_SUPABASE_URL and JOBCLAW_SUPABASE_KEY must be set in .env");
+  process.exit(1);
+}
 const OLLAMA_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "llama3.2"; // Better at instructions than qwen2.5:7b
+const OLLAMA_MODEL = "llama3.2";
 
-// Gemini fallback
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyAUc_Etrs4zKeiYTy2-gm05xwvVP-fi6WA";
-const GEMINI_MODEL = "gemini-3-flash-preview"; // Latest Gemini 3 Flash
+const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL = "gemini-3-flash-preview";
 
 // ─── Parse args ──────────────────────────────────────────────────────────────
 let LIMIT = 30;
@@ -86,47 +106,11 @@ function sbPost(path, data) {
   });
 }
 
-// ─── Cover letter generation ─────────────────────────────────────────────────
-
-const PROFILE = `
-- CPO at Levee: built computer vision system 92%+ accuracy, 60% inspection time reduction, PhocusWire Global Pitch Winner, HITEC $25K AI competition winner
-- Chamberlain Group: managed $250M smart-home portfolio, turned Ring partnership from -11% to +68% IRR
-- 2025: 3.28M lines of production code, 132 projects — TypeScript, React, Next.js, Supabase, Python, AI/ML
-- Stack: full-stack SaaS, real-time analytics, LLM integrations
-- Style: zero-to-one builder, production AI with measurable business impact`.trim();
-
-const ROLE_GUIDE = `
-- AI/ML Engineer → lead with Levee CV system (92%, 60% time cut), mention full-stack AI platform
-- Product Manager → lead with Chamberlain ($250M portfolio, +68% IRR) or Levee (zero-to-one + competition wins)
-- VP/Director Product → lead with Chamberlain scale + Levee zero-to-one
-- Staff/Principal Engineer → lead with 3.28M lines / 132 projects, multi-tenant SaaS`.trim();
-
-const BANNED =
-  "excited, passionate, thrilled, love, leverage, synergy, innovative, cutting-edge, world-class, dynamic, rockstar, guru, thought leader, disruptive, feel free, reach out, circle back, hit the ground running, move the needle, great fit, perfect fit, exclamation points, I believe, I feel, I think, proud to bring, aligns perfectly, aligns with, I am confident, I am writing to, I am applying, Dear Hiring Manager, To Whom It May Concern, at [company] I'm proud";
-
-function buildPrompt(title, company, mode) {
-  return `Write a 100-140 word cover letter. Applicant: Guillermo Villegas. Role: ${title} at ${company} (${mode}).
-
-Structure (two paragraphs, no greeting, no "Dear..."):
-- P1: State the role. Then one concrete achievement from his background that is directly relevant to THIS specific role type. Use the exact numbers.
-- P2: One more relevant proof point (different from P1). End with "Guillermo Villegas" on its own line.
-
-Background:
-${PROFILE}
-
-Match the proof points to the role type:
-${ROLE_GUIDE}
-
-Rules:
-- Do NOT make up anything about ${company} — you don't know what they do. Only reference the role title.
-- Do NOT start with "At ${company}" or "I'm proud" or any variation. Start with a direct statement about the role or his work.
-- Write in first person, direct tone. Short sentences. No filler.
-- NEVER use these words/phrases: ${BANNED}
-- No markdown, no quotes, no preamble. Output the letter text only.`;
-}
+// ─── Cover letter generation (loaded from config/profile.json) ──────────────
+// buildCoverLetterPrompt is imported from config/load-profile.mjs
 
 async function generateWithOllama(title, company, mode) {
-  const prompt = buildPrompt(title, company, mode);
+  const prompt = buildCoverLetterPrompt(title, company, mode);
   try {
     const res = await request(`${OLLAMA_URL}/api/generate`, {
       method: "POST",
@@ -150,7 +134,7 @@ async function generateWithOllama(title, company, mode) {
 }
 
 async function generateWithGemini(title, company, mode) {
-  const prompt = buildPrompt(title, company, mode);
+  const prompt = buildCoverLetterPrompt(title, company, mode);
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     const res = await request(url, {
