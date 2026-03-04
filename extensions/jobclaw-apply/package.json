@@ -1,0 +1,12 @@
+{
+  "name": "@careerclaw/jobclaw-apply",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CareerClaw AI cover letter and proposal generation tool",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

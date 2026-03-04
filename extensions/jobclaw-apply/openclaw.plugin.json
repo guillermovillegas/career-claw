@@ -1,0 +1,10 @@
+{
+  "id": "jobclaw-apply",
+  "name": "CareerClaw Apply",
+  "description": "Generate tailored cover letters and freelance proposals using AI. Adapts tone, style, and content to match job requirements with Guillermo's profile.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
