@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /**
- * direct-apply.mjs — Generate cover letters via Ollama and save directly to Supabase.
- * Bypasses openclaw agent framework to avoid tool-calling reliability issues.
+ * fix-cover-letters.mjs — Re-generate truncated/bad cover letters in the database.
+ * Finds applications with cover letters < 200 chars or containing banned words,
+ * generates new ones, and updates the DB.
  *
- * Usage: node direct-apply.mjs [--limit N] [--min-score N] [--dry-run]
+ * Usage: node scripts/careerclaw/fix-cover-letters.mjs [--dry-run] [--status interested] [--limit N]
  */
 
 import { readFileSync } from "fs";
@@ -16,7 +17,7 @@ import { buildCoverLetterPrompt } from "../../config/load-profile.mjs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
 
-// ─── Config (loaded from .env) ──────────────────────────────────────────────
+// ─── Config ──────────────────────────────────────────────────────────────────
 const envFile = join(ROOT, ".env");
 const envVars = {};
 try {
@@ -34,30 +35,71 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("ERROR: JOBCLAW_SUPABASE_URL and JOBCLAW_SUPABASE_KEY must be set in .env");
   process.exit(1);
 }
+
 const OLLAMA_URL = "http://localhost:11434";
 const OLLAMA_MODEL = "llama3.2";
-
 const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = "gemini-3-flash-preview";
 
 // ─── Parse args ──────────────────────────────────────────────────────────────
-let LIMIT = 30;
-let MIN_SCORE = 70;
+let LIMIT = 200;
 let DRY_RUN = false;
+let TARGET_STATUS = ""; // empty = all statuses
 
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === "--limit") {
     LIMIT = parseInt(process.argv[++i]);
   }
-  if (process.argv[i] === "--min-score") {
-    MIN_SCORE = parseInt(process.argv[++i]);
-  }
   if (process.argv[i] === "--dry-run") {
     DRY_RUN = true;
   }
+  if (process.argv[i] === "--status") {
+    TARGET_STATUS = process.argv[++i];
+  }
 }
 
-const TODAY = new Date().toISOString().slice(0, 10);
+// ─── Validation ──────────────────────────────────────────────────────────────
+const MIN_CL_LENGTH = 200;
+const MAX_CL_LENGTH = 900;
+
+const BANNED_PATTERNS = [
+  /\bdear\b/i,
+  /\bto whom it may concern\b/i,
+  /\bI am writing to\b/i,
+  /\bI am applying\b/i,
+  /\bI am confident\b/i,
+  /\bexcited to\b/i,
+  /\bpassionate\b/i,
+  /\bthrilled\b/i,
+  /\bleverage\b/i,
+  /\bsynergy\b/i,
+  /\bcutting-edge\b/i,
+  /\binnovative leader\b/i,
+  /\bI'm proud\b/i,
+  /\bproud to bring\b/i,
+  /\baligns perfectly\b/i,
+  /\bperfect fit\b/i,
+  /\bgreat fit\b/i,
+  /\bworld-class\b/i,
+  /\bdynamic\b/i,
+  /\bdelighted\b/i,
+];
+
+function validateCoverLetter(letter) {
+  if (letter.length < MIN_CL_LENGTH) {
+    return { valid: false, reason: `too short (${letter.length} chars)` };
+  }
+  if (letter.length > MAX_CL_LENGTH) {
+    return { valid: false, reason: `too long (${letter.length} chars)` };
+  }
+  for (const pattern of BANNED_PATTERNS) {
+    const match = letter.match(pattern);
+    if (match) {
+      return { valid: false, reason: `banned: "${match[0]}"` };
+    }
+  }
+  return { valid: true };
+}
 
 // ─── HTTP helpers ────────────────────────────────────────────────────────────
 function request(urlStr, opts = {}) {
@@ -92,10 +134,10 @@ function sbGet(path) {
   }).then((r) => JSON.parse(r.body));
 }
 
-function sbPost(path, data) {
+function sbPatch(path, data) {
   const body = JSON.stringify(data);
   return request(SUPABASE_URL + path, {
-    method: "POST",
+    method: "PATCH",
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: "Bearer " + SUPABASE_KEY,
@@ -106,9 +148,7 @@ function sbPost(path, data) {
   });
 }
 
-// ─── Cover letter generation (loaded from config/profile.json) ──────────────
-// buildCoverLetterPrompt is imported from config/load-profile.mjs
-
+// ─── LLM generation ──────────────────────────────────────────────────────────
 async function generateWithOllama(title, company, mode) {
   const prompt = buildCoverLetterPrompt(title, company, mode);
   try {
@@ -157,203 +197,134 @@ async function generateWithGemini(title, company, mode) {
   }
 }
 
-// ─── Cover letter validation ──────────────────────────────────────────────
-const MIN_CL_LENGTH = 200;
-const MAX_CL_LENGTH = 900;
-
-const BANNED_PATTERNS = [
-  /\bdear\b/i,
-  /\bto whom it may concern\b/i,
-  /\bI am writing to\b/i,
-  /\bI am applying\b/i,
-  /\bI am confident\b/i,
-  /\bexcited to\b/i,
-  /\bpassionate\b/i,
-  /\bthrilled\b/i,
-  /\bleverage\b/i,
-  /\bsynergy\b/i,
-  /\bcutting-edge\b/i,
-  /\binnovative leader\b/i,
-  /\bgame-changer\b/i,
-  /\bI'm proud\b/i,
-  /\bproud to bring\b/i,
-  /\baligns perfectly\b/i,
-  /\bperfect fit\b/i,
-  /\bgreat fit\b/i,
-  /\bworld-class\b/i,
-  /\bdynamic\b/i,
-  /\bdelighted\b/i,
-];
-
-function validateCoverLetter(letter) {
-  if (letter.length < MIN_CL_LENGTH) {
-    return { valid: false, reason: `too short (${letter.length} chars, need ${MIN_CL_LENGTH}+)` };
-  }
-  if (letter.length > MAX_CL_LENGTH) {
-    return { valid: false, reason: `too long (${letter.length} chars, max ${MAX_CL_LENGTH})` };
-  }
-  for (const pattern of BANNED_PATTERNS) {
-    const match = letter.match(pattern);
-    if (match) {
-      return { valid: false, reason: `banned phrase: "${match[0]}"` };
-    }
-  }
-  return { valid: true };
-}
-
-async function generateCoverLetter(title, company, mode) {
+async function generateValidCoverLetter(title, company, mode) {
   const MAX_ATTEMPTS = 3;
-
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    // Try Gemini first, then Ollama
     let letter = await generateWithGemini(title, company, mode);
     if (!letter || letter.length < MIN_CL_LENGTH) {
-      console.log("  Falling back to Ollama...");
       letter = await generateWithOllama(title, company, mode);
     }
-
     if (!letter) {
       console.log(`  Attempt ${attempt}/${MAX_ATTEMPTS}: no output`);
       continue;
     }
-
     const check = validateCoverLetter(letter);
     if (check.valid) {
       return letter;
     }
-
     console.log(`  Attempt ${attempt}/${MAX_ATTEMPTS}: rejected — ${check.reason}`);
     if (attempt < MAX_ATTEMPTS) {
       await new Promise((r) => setTimeout(r, 1000));
     }
   }
-
   return null;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
-console.log("=== CareerClaw Direct Apply ===");
-console.log(`Date:      ${TODAY}`);
-console.log(`Min score: ${MIN_SCORE}`);
-console.log(`Limit:     ${LIMIT}`);
-console.log(`Dry run:   ${DRY_RUN}`);
+console.log("=== Fix Cover Letters ===");
+console.log(`Target status: ${TARGET_STATUS || "all"}`);
+console.log(`Limit: ${LIMIT}`);
+console.log(`Dry run: ${DRY_RUN}`);
 console.log("");
 
-// Fetch jobs and applications
-const [allJobs, allApps] = await Promise.all([
-  sbGet(
-    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,salary_min,salary_max&order=match_score.desc&limit=300",
-  ),
-  sbGet("/rest/v1/applications?select=job_id"),
-]);
+// Fetch applications that need fixing
+let query =
+  "/rest/v1/applications?select=id,job_id,status,cover_letter&order=created_at.desc&limit=" + LIMIT;
+if (TARGET_STATUS) {
+  query += "&status=eq." + TARGET_STATUS;
+}
 
-if (!Array.isArray(allJobs)) {
-  console.error("Error fetching jobs:", allJobs);
+const apps = await sbGet(query);
+if (!Array.isArray(apps)) {
+  console.error("Error fetching applications:", apps);
   process.exit(1);
 }
 
-const appliedIds = new Set(allApps.map((a) => a.job_id));
-
-// Filter: unapplied, full-time, score >= MIN_SCORE, not past deadline
-const candidates = allJobs
-  .filter((j) => {
-    if (!j.id || appliedIds.has(j.id)) {
-      return false;
-    }
-    if ((j.match_score || 0) < MIN_SCORE) {
-      return false;
-    }
-    if (j.job_type && j.job_type !== "full-time") {
-      return false;
-    }
+// Find bad cover letters
+const needsFix = apps.filter((a) => {
+  if (!a.cover_letter) {
     return true;
-  })
-  .slice(0, LIMIT);
+  }
+  const check = validateCoverLetter(a.cover_letter);
+  return !check.valid;
+});
 
-console.log(`Found ${candidates.length} job(s) to apply to.\n`);
+console.log(
+  `Found ${needsFix.length} applications with bad cover letters (out of ${apps.length} checked)\n`,
+);
 
-if (DRY_RUN) {
-  candidates.forEach((j, i) => {
-    const sal = j.salary_min
-      ? ` $${Math.round(j.salary_min / 1000)}k-$${Math.round((j.salary_max || j.salary_min) / 1000)}k`
-      : "";
-    console.log(`  ${i + 1}. [${j.match_score}] ${j.title} @ ${j.company}${sal}`);
-    console.log(`     ${j.url || "no url"}`);
-  });
+if (needsFix.length === 0) {
+  console.log("Nothing to fix.");
   process.exit(0);
 }
 
-let saved = 0;
+// Fetch job details for all apps that need fixing
+const jobIds = [...new Set(needsFix.map((a) => a.job_id))];
+const jobs = await sbGet(
+  "/rest/v1/jobs?select=id,title,company,work_mode&id=in.(" + jobIds.join(",") + ")&limit=500",
+);
+const jobMap = {};
+jobs.forEach((j) => (jobMap[j.id] = j));
+
+let fixed = 0;
 let failed = 0;
+let skipped = 0;
 
-for (let i = 0; i < candidates.length; i++) {
-  const j = candidates[i];
-  const num = i + 1;
-  const sal = j.salary_min
-    ? ` | $${Math.round(j.salary_min / 1000)}k-$${Math.round((j.salary_max || j.salary_min) / 1000)}k`
-    : "";
-
-  console.log(
-    `─── [${num}/${candidates.length}] ${j.title} @ ${j.company} (score: ${j.match_score}) ───`,
-  );
-  if (sal) {
-    console.log(`    Salary:${sal}  Mode: ${j.work_mode || "remote"}`);
+for (let i = 0; i < needsFix.length; i++) {
+  const a = needsFix[i];
+  const j = jobMap[a.job_id];
+  if (!j) {
+    console.log(`[${i + 1}/${needsFix.length}] SKIP — no job found for ${a.job_id}`);
+    skipped++;
+    continue;
   }
-  console.log(`    URL: ${j.url || "none"}`);
 
-  const letter = await generateCoverLetter(j.title, j.company, j.work_mode || "remote");
+  const oldLen = a.cover_letter ? a.cover_letter.length : 0;
+  const oldCheck = a.cover_letter ? validateCoverLetter(a.cover_letter) : { reason: "missing" };
+  console.log(
+    `[${i + 1}/${needsFix.length}] ${j.title} @ ${j.company} (${a.status}) — ${oldCheck.reason}`,
+  );
 
+  if (DRY_RUN) {
+    if (a.cover_letter) {
+      console.log(`  Old: "${a.cover_letter.substring(0, 80)}..."`);
+    }
+    console.log("");
+    continue;
+  }
+
+  const letter = await generateValidCoverLetter(j.title, j.company, j.work_mode || "remote");
   if (!letter) {
-    console.log("  ✗ Failed to generate cover letter");
+    console.log("  FAILED — could not generate valid cover letter");
     failed++;
     console.log("");
     continue;
   }
 
-  // Determine platform from URL
-  let platform = "direct";
-  if (j.url) {
-    if (/linkedin\.com/i.test(j.url)) {
-      platform = "linkedin";
-    } else if (/indeed\.com/i.test(j.url)) {
-      platform = "indeed";
-    } else if (/upwork\.com/i.test(j.url)) {
-      platform = "upwork";
-    }
-  }
-
-  // Priority: 1=high (85+), 2=medium (70-84), 3=normal
-  const priority = j.match_score >= 85 ? 1 : j.match_score >= 70 ? 2 : 3;
-
-  const appData = {
-    job_id: j.id,
-    status: "interested",
-    platform,
+  // Update in database
+  const res = await sbPatch(`/rest/v1/applications?id=eq.${a.id}`, {
     cover_letter: letter,
-    match_score: j.match_score,
-    priority,
-    notes: `Auto-applied ${TODAY}`,
-  };
+    notes:
+      (a.status === "applied" ? a.notes || "" : "") +
+      (a.notes && a.status === "applied" ? " | " : "") +
+      `Cover letter regenerated ${new Date().toISOString().slice(0, 10)}`,
+  });
 
-  console.log("  Cover letter preview:", letter.substring(0, 80).replace(/\n/g, " ") + "...");
-
-  const res = await sbPost("/rest/v1/applications", appData);
-
-  if (res.status === 201) {
-    console.log("  ✓ Saved to DB");
-    saved++;
+  if (res.status === 204) {
+    console.log(`  FIXED (${oldLen} → ${letter.length} chars)`);
+    console.log(`  Preview: ${letter.substring(0, 100).replace(/\n/g, " ")}...`);
+    fixed++;
   } else {
-    console.log(`  ✗ DB error (HTTP ${res.status}):`, res.body.substring(0, 200));
+    console.log(`  DB ERROR (HTTP ${res.status}): ${res.body.substring(0, 200)}`);
     failed++;
   }
 
   console.log("");
 
-  // Small pause between jobs
-  if (i < candidates.length - 1) {
+  // Rate limit
+  if (i < needsFix.length - 1) {
     await new Promise((r) => setTimeout(r, 2000));
   }
 }
 
-console.log(`=== Done: ${saved} saved, ${failed} failed ===`);
-console.log(`Applications: ${allApps.length} → ${allApps.length + saved} (+${saved})`);
+console.log(`=== Done: ${fixed} fixed, ${failed} failed, ${skipped} skipped ===`);
