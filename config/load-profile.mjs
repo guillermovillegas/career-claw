@@ -100,22 +100,24 @@ export function getCoverLetterConfig() {
  */
 export function buildCoverLetterPrompt(title, company, mode) {
   const cl = getCoverLetterConfig();
-  return `Write a 100-140 word cover letter. Applicant: ${cl.fullName}. Role: ${title} at ${company} (${mode}).
+  return `Write a 100-140 word cover letter for ${cl.fullName} applying to: ${title} at ${company} (${mode}).
 
-Structure (two paragraphs, no greeting, no "Dear..."):
-- P1: State the role. Then one concrete achievement from his background that is directly relevant to THIS specific role type. Use the exact numbers.
-- P2: One more relevant proof point (different from P1). End with "${cl.fullName}" on its own line.
+FORMAT — exactly two paragraphs, then the name on its own line:
+Paragraph 1: Name the role. Then one concrete achievement from the background below that directly matches THIS role type. Include the exact numbers.
+Paragraph 2: A second, different proof point. End the paragraph, then put "${cl.fullName}" alone on the final line.
 
-Background:
+BACKGROUND (use these facts — pick the most relevant):
 ${cl.backgroundText}
 
-Match the proof points to the role type:
+ROLE-MATCHING GUIDE (which facts to lead with per role type):
 ${cl.roleGuideText}
 
-Rules:
-- Do NOT make up anything about ${company} — you don't know what they do. Only reference the role title.
-- Do NOT start with "At ${company}" or "I'm proud" or any variation. Start with a direct statement about the role or his work.
-- Write in first person, direct tone. Short sentences. No filler.
-- NEVER use these words/phrases: ${cl.bannedWords}
-- No markdown, no quotes, no preamble. Output the letter text only.`;
+STRICT RULES — violating any of these makes the output unusable:
+1. Do NOT invent facts about ${company}. You know nothing about them. Only reference the role title.
+2. Do NOT start with any greeting. No "Dear", no "To Whom", no "I am writing", no "I am applying". Start with a direct statement about his work or the role.
+3. Do NOT use filler. No "I am confident", "excited to", "passionate", "proud to bring", "great fit", "perfect fit", "aligns perfectly".
+4. NEVER use any of these banned words/phrases: ${cl.bannedWords}
+5. Write in first person. Direct tone. Short sentences. No fluff.
+6. Output ONLY the letter text. No markdown, no quotes, no preamble, no labels.
+7. The letter MUST be at least 100 words. A one-sentence response is NOT acceptable.`;
 }
