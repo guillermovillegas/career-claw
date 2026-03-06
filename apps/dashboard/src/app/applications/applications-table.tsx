@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import type { ApplicationWithJob } from "@/lib/database.types";
 import { StatusBadge } from "@/components/status-badge";
 import { ScoreBadge } from "@/components/score-badge";
@@ -189,7 +190,13 @@ function ApplicationRow({
           <StatusBadge status={app.status} />
         </td>
         <td className="px-4 py-3 font-medium text-slate-200">
-          {app.jobs?.title ?? "Unknown Role"}
+          <Link
+            href={`/applications/${app.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="hover:text-emerald-400 transition-colors"
+          >
+            {app.jobs?.title ?? "Unknown Role"}
+          </Link>
         </td>
         <td className="px-4 py-3 text-slate-300">
           {app.jobs?.company ?? "--"}

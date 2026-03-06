@@ -12,6 +12,7 @@ import https from "https";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { buildCoverLetterPrompt } from "../../config/load-profile.mjs";
+import { validateCoverLetterForJob, MIN_CL_LENGTH } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -35,7 +36,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 const OLLAMA_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "llama3.2";
+const OLLAMA_MODEL = "qwen3:8b";
 
 const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = "gemini-3-flash-preview";
@@ -110,7 +111,11 @@ function sbPost(path, data) {
 // buildCoverLetterPrompt is imported from config/load-profile.mjs
 
 async function generateWithOllama(title, company, mode) {
-  const prompt = buildCoverLetterPrompt(title, company, mode);
+  let prompt = buildCoverLetterPrompt(title, company, mode);
+  // qwen3 defaults to thinking mode — disable it to maximize output tokens
+  if (OLLAMA_MODEL.startsWith("qwen3")) {
+    prompt = "/nothink\n" + prompt;
+  }
   try {
     const res = await request(`${OLLAMA_URL}/api/generate`, {
       method: "POST",
@@ -119,14 +124,19 @@ async function generateWithOllama(title, company, mode) {
         model: OLLAMA_MODEL,
         prompt,
         stream: false,
-        options: { temperature: 0.7, num_predict: 300 },
+        options: { temperature: 0.7, num_predict: 600 },
       }),
     });
     if (res.status !== 200) {
       throw new Error(`Ollama HTTP ${res.status}`);
     }
     const parsed = JSON.parse(res.body);
-    return parsed.response?.trim() || null;
+    let text = parsed.response?.trim() || null;
+    // Strip thinking tags if model emitted them despite /nothink
+    if (text) {
+      text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    }
+    return text;
   } catch (e) {
     console.error("  Ollama error:", e.message);
     return null;
@@ -157,49 +167,7 @@ async function generateWithGemini(title, company, mode) {
   }
 }
 
-// ─── Cover letter validation ──────────────────────────────────────────────
-const MIN_CL_LENGTH = 200;
-const MAX_CL_LENGTH = 900;
-
-const BANNED_PATTERNS = [
-  /\bdear\b/i,
-  /\bto whom it may concern\b/i,
-  /\bI am writing to\b/i,
-  /\bI am applying\b/i,
-  /\bI am confident\b/i,
-  /\bexcited to\b/i,
-  /\bpassionate\b/i,
-  /\bthrilled\b/i,
-  /\bleverage\b/i,
-  /\bsynergy\b/i,
-  /\bcutting-edge\b/i,
-  /\binnovative leader\b/i,
-  /\bgame-changer\b/i,
-  /\bI'm proud\b/i,
-  /\bproud to bring\b/i,
-  /\baligns perfectly\b/i,
-  /\bperfect fit\b/i,
-  /\bgreat fit\b/i,
-  /\bworld-class\b/i,
-  /\bdynamic\b/i,
-  /\bdelighted\b/i,
-];
-
-function validateCoverLetter(letter) {
-  if (letter.length < MIN_CL_LENGTH) {
-    return { valid: false, reason: `too short (${letter.length} chars, need ${MIN_CL_LENGTH}+)` };
-  }
-  if (letter.length > MAX_CL_LENGTH) {
-    return { valid: false, reason: `too long (${letter.length} chars, max ${MAX_CL_LENGTH})` };
-  }
-  for (const pattern of BANNED_PATTERNS) {
-    const match = letter.match(pattern);
-    if (match) {
-      return { valid: false, reason: `banned phrase: "${match[0]}"` };
-    }
-  }
-  return { valid: true };
-}
+// ─── Cover letter validation (imported from lib/validation.mjs) ──────────
 
 async function generateCoverLetter(title, company, mode) {
   const MAX_ATTEMPTS = 3;
@@ -217,7 +185,11 @@ async function generateCoverLetter(title, company, mode) {
       continue;
     }
 
-    const check = validateCoverLetter(letter);
+    // Strip trailing bare name line if present (LLMs sometimes add it after the closing paragraph)
+    letter = letter.replace(/\n\s*Jane Doe\s*$/, "").trim();
+
+    // Context-aware check: company + role mention required
+    const check = validateCoverLetterForJob(letter, company, title);
     if (check.valid) {
       return letter;
     }
@@ -285,6 +257,8 @@ if (DRY_RUN) {
 
 let saved = 0;
 let failed = 0;
+const perJobResults = [];
+const startTime = Date.now();
 
 for (let i = 0; i < candidates.length; i++) {
   const j = candidates[i];
@@ -342,9 +316,25 @@ for (let i = 0; i < candidates.length; i++) {
   if (res.status === 201) {
     console.log("  ✓ Saved to DB");
     saved++;
+    perJobResults.push({
+      title: j.title,
+      company: j.company,
+      score: j.match_score,
+      platform,
+      cl_length: letter.length,
+      status: "saved",
+    });
   } else {
     console.log(`  ✗ DB error (HTTP ${res.status}):`, res.body.substring(0, 200));
     failed++;
+    perJobResults.push({
+      title: j.title,
+      company: j.company,
+      score: j.match_score,
+      platform,
+      status: "db_error",
+      error: res.body.substring(0, 100),
+    });
   }
 
   console.log("");
@@ -357,3 +347,36 @@ for (let i = 0; i < candidates.length; i++) {
 
 console.log(`=== Done: ${saved} saved, ${failed} failed ===`);
 console.log(`Applications: ${allApps.length} → ${allApps.length + saved} (+${saved})`);
+
+// Log automation run with per-job details
+if (!DRY_RUN && (saved > 0 || failed > 0)) {
+  const elapsedMs = Date.now() - startTime;
+  const logPayload = {
+    action_type: "application_submit",
+    platform: "direct-apply",
+    success: failed === 0,
+    details: {
+      date: TODAY,
+      source: "direct-apply.mjs",
+      ai_model: GEMINI_API_KEY ? GEMINI_MODEL : OLLAMA_MODEL,
+      min_score: MIN_SCORE,
+      limit: LIMIT,
+      candidates_found: candidates.length,
+      new_applications: saved,
+      failed,
+      applications_before: allApps.length,
+      applications_after: allApps.length + saved,
+      per_job: perJobResults,
+    },
+    execution_time_ms: elapsedMs,
+  };
+  if (failed > 0) {
+    logPayload.error_message = `${failed} application(s) failed to save`;
+  }
+  const logRes = await sbPost("/rest/v1/automation_logs", logPayload);
+  if (logRes.status === 201) {
+    console.log(`Logged automation run (${elapsedMs}ms)`);
+  } else {
+    console.log(`Warning: automation log failed (HTTP ${logRes.status})`);
+  }
+}

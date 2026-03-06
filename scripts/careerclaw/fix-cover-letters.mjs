@@ -13,6 +13,7 @@ import https from "https";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { buildCoverLetterPrompt } from "../../config/load-profile.mjs";
+import { validateCoverLetter, MIN_CL_LENGTH } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -58,48 +59,7 @@ for (let i = 2; i < process.argv.length; i++) {
   }
 }
 
-// ─── Validation ──────────────────────────────────────────────────────────────
-const MIN_CL_LENGTH = 200;
-const MAX_CL_LENGTH = 900;
-
-const BANNED_PATTERNS = [
-  /\bdear\b/i,
-  /\bto whom it may concern\b/i,
-  /\bI am writing to\b/i,
-  /\bI am applying\b/i,
-  /\bI am confident\b/i,
-  /\bexcited to\b/i,
-  /\bpassionate\b/i,
-  /\bthrilled\b/i,
-  /\bleverage\b/i,
-  /\bsynergy\b/i,
-  /\bcutting-edge\b/i,
-  /\binnovative leader\b/i,
-  /\bI'm proud\b/i,
-  /\bproud to bring\b/i,
-  /\baligns perfectly\b/i,
-  /\bperfect fit\b/i,
-  /\bgreat fit\b/i,
-  /\bworld-class\b/i,
-  /\bdynamic\b/i,
-  /\bdelighted\b/i,
-];
-
-function validateCoverLetter(letter) {
-  if (letter.length < MIN_CL_LENGTH) {
-    return { valid: false, reason: `too short (${letter.length} chars)` };
-  }
-  if (letter.length > MAX_CL_LENGTH) {
-    return { valid: false, reason: `too long (${letter.length} chars)` };
-  }
-  for (const pattern of BANNED_PATTERNS) {
-    const match = letter.match(pattern);
-    if (match) {
-      return { valid: false, reason: `banned: "${match[0]}"` };
-    }
-  }
-  return { valid: true };
-}
+// ─── Validation (imported from lib/validation.mjs) ──────────────────────────
 
 // ─── HTTP helpers ────────────────────────────────────────────────────────────
 function request(urlStr, opts = {}) {

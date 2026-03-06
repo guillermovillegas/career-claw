@@ -1,0 +1,350 @@
+/**
+ * Shared validation for CareerClaw pipeline.
+ * Single source of truth for cover letter, job, and application validation.
+ */
+
+import http from "http";
+import https from "https";
+
+// ─── Cover Letter Validation ──────────────────────────────────────────────────
+
+export const MIN_CL_LENGTH = 200;
+export const MAX_CL_LENGTH = 1100;
+
+export const BANNED_PATTERNS = [
+  /\bdear\b/i,
+  /\bto whom it may concern\b/i,
+  /\bI am writing to\b/i,
+  /\bI am applying\b/i,
+  /\bI am confident\b/i,
+  /\bexcited to\b/i,
+  /\bpassionate\b/i,
+  /\bthrilled\b/i,
+  /\bleverage\b/i,
+  /\bsynergy\b/i,
+  /\bcutting-edge\b/i,
+  /\binnovative leader\b/i,
+  /\bgame-changer\b/i,
+  /\bI'm proud\b/i,
+  /\bproud to bring\b/i,
+  /\baligns perfectly\b/i,
+  /\bperfect fit\b/i,
+  /\bgreat fit\b/i,
+  /\bworld-class\b/i,
+  /\bdynamic\b/i,
+  /\bdelighted\b/i,
+  /\bas a seasoned\b/i,
+];
+
+/**
+ * Validate a cover letter for length, banned patterns, and paragraph structure.
+ * @returns {{ valid: boolean, reason?: string, issues?: string[] }}
+ */
+export function validateCoverLetter(letter) {
+  if (!letter || typeof letter !== "string") {
+    return { valid: false, reason: "missing or not a string" };
+  }
+  const issues = [];
+
+  if (letter.length < MIN_CL_LENGTH) {
+    issues.push(`too short (${letter.length} chars, need ${MIN_CL_LENGTH}+)`);
+  }
+  if (letter.length > MAX_CL_LENGTH) {
+    issues.push(`too long (${letter.length} chars, max ${MAX_CL_LENGTH})`);
+  }
+  for (const pattern of BANNED_PATTERNS) {
+    const match = letter.match(pattern);
+    if (match) {
+      issues.push(`banned phrase: "${match[0]}"`);
+    }
+  }
+
+  // Paragraph structure: should have at least 2 line breaks (3 paragraphs)
+  const paragraphs = letter.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+  if (paragraphs.length < 2) {
+    issues.push(`weak structure (${paragraphs.length} paragraph(s), need 2+)`);
+  }
+
+  if (issues.length > 0) {
+    return { valid: false, reason: issues[0], issues };
+  }
+  return { valid: true };
+}
+
+/**
+ * Context-aware cover letter quality check.
+ * Runs validateCoverLetter() plus checks company/role mention.
+ * @param {string} letter
+ * @param {string} company - company name to look for
+ * @param {string} title - role title to look for
+ * @returns {{ valid: boolean, reason?: string, issues?: string[] }}
+ */
+export function validateCoverLetterForJob(letter, company, title) {
+  const base = validateCoverLetter(letter);
+  const issues = base.issues ? [...base.issues] : [];
+
+  if (letter && typeof letter === "string") {
+    const clLower = letter.toLowerCase();
+
+    // Company name must appear
+    if (company && !clLower.includes(company.toLowerCase())) {
+      issues.push(`never mentions company "${company}"`);
+    }
+
+    // Role title should be meaningfully referenced (2+ content words from the title)
+    if (title) {
+      const titleWords = title
+        .toLowerCase()
+        .split(/[\s,/()–—-]+/)
+        .filter(
+          (w) => w.length > 3 && !["senior", "staff", "lead", "principal", "head"].includes(w),
+        );
+      const hits = titleWords.filter((w) => clLower.includes(w));
+      if (hits.length < Math.min(2, titleWords.length)) {
+        issues.push(`barely references role "${title}"`);
+      }
+    }
+
+    // Should not start with a bare number
+    if (/^\d/.test(letter.trim())) {
+      issues.push("opens with a number — reads impersonally");
+    }
+  }
+
+  if (issues.length > 0) {
+    return { valid: false, reason: issues[0], issues };
+  }
+  return { valid: true };
+}
+
+// ─── Job Validation ───────────────────────────────────────────────────────────
+
+const VALID_JOB_TYPES = new Set(["full-time", "part-time", "contract", "freelance"]);
+const VALID_WORK_MODES = new Set(["remote", "hybrid", "on-site"]);
+const VALID_PLATFORMS = new Set([
+  "linkedin",
+  "indeed",
+  "upwork",
+  "fiverr",
+  "direct",
+  "referral",
+  "other",
+]);
+
+const SUSPECT_URL_PATTERNS = [
+  /JOBID/i, // placeholder URLs
+  /example\.com/i,
+  /localhost/i,
+  /127\.0\.0\.1/,
+];
+
+/**
+ * Validate a job record.
+ * @returns {{ valid: boolean, issues: string[] }}
+ */
+export function validateJob(job) {
+  const issues = [];
+
+  if (!job.title) {
+    issues.push("missing title");
+  }
+  if (!job.company) {
+    issues.push("missing company");
+  }
+  if (!job.platform) {
+    issues.push("missing platform");
+  }
+
+  if (job.platform && !VALID_PLATFORMS.has(job.platform)) {
+    issues.push(`invalid platform: "${job.platform}"`);
+  }
+  if (job.job_type && !VALID_JOB_TYPES.has(job.job_type)) {
+    issues.push(`invalid job_type: "${job.job_type}"`);
+  }
+  if (job.work_mode && !VALID_WORK_MODES.has(job.work_mode)) {
+    issues.push(`invalid work_mode: "${job.work_mode}"`);
+  }
+
+  if (job.match_score != null && (job.match_score < 0 || job.match_score > 100)) {
+    issues.push(`match_score out of range: ${job.match_score}`);
+  }
+
+  if (job.url) {
+    for (const pattern of SUSPECT_URL_PATTERNS) {
+      if (pattern.test(job.url)) {
+        issues.push(`suspect URL pattern: ${job.url}`);
+        break;
+      }
+    }
+  }
+
+  if (job.deadline) {
+    const deadline = new Date(job.deadline);
+    if (!isNaN(deadline.getTime()) && deadline < new Date()) {
+      issues.push(`past deadline: ${job.deadline}`);
+    }
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
+// ─── Application Validation ───────────────────────────────────────────────────
+
+const VALID_STATUSES = new Set([
+  "interested",
+  "applied",
+  "phone_screen",
+  "interview",
+  "final",
+  "offer",
+  "hired",
+  "rejected",
+  "withdrawn",
+]);
+
+/**
+ * Valid status transitions. Keys are "from" statuses, values are allowed "to" statuses.
+ */
+const STATUS_TRANSITIONS = {
+  interested: new Set(["applied", "rejected", "withdrawn"]),
+  applied: new Set(["phone_screen", "interview", "rejected", "withdrawn"]),
+  phone_screen: new Set(["interview", "rejected", "withdrawn"]),
+  interview: new Set(["final", "offer", "rejected", "withdrawn"]),
+  final: new Set(["offer", "rejected", "withdrawn"]),
+  offer: new Set(["hired", "rejected", "withdrawn"]),
+  hired: new Set(["withdrawn"]),
+  rejected: new Set([]), // terminal
+  withdrawn: new Set([]), // terminal
+};
+
+/**
+ * Check if a status transition is valid.
+ */
+export function isValidStatusTransition(from, to) {
+  if (!from || !to) {
+    return false;
+  }
+  if (from === to) {
+    return true;
+  } // no-op is always valid
+  const allowed = STATUS_TRANSITIONS[from];
+  return allowed ? allowed.has(to) : false;
+}
+
+/**
+ * Validate an application record.
+ * @returns {{ valid: boolean, issues: string[] }}
+ */
+export function validateApplication(app) {
+  const issues = [];
+
+  if (!app.status) {
+    issues.push("missing status");
+  } else if (!VALID_STATUSES.has(app.status)) {
+    issues.push(`invalid status: "${app.status}"`);
+  }
+
+  if (app.status === "applied" && !app.cover_letter) {
+    issues.push("applied without cover letter");
+  }
+
+  if (app.match_score != null && (app.match_score < 0 || app.match_score > 100)) {
+    issues.push(`match_score out of range: ${app.match_score}`);
+  }
+
+  if (app.priority != null && (app.priority < 1 || app.priority > 5)) {
+    issues.push(`priority out of range: ${app.priority}`);
+  }
+
+  if (app.cover_letter) {
+    const clCheck = validateCoverLetter(app.cover_letter);
+    if (!clCheck.valid) {
+      issues.push(`cover letter: ${clCheck.reason}`);
+    }
+  }
+
+  return { valid: issues.length === 0, issues };
+}
+
+// ─── URL Liveness Check ──────────────────────────────────────────────────────
+
+/**
+ * HEAD-check a URL to detect expired/dead job posts.
+ * Returns { alive: boolean, status: number|null, reason?: string }
+ * Treats redirects to error pages as dead.
+ */
+export function checkUrlLiveness(urlStr, timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    if (!urlStr) {
+      resolve({ alive: false, status: null, reason: "no URL" });
+      return;
+    }
+
+    let resolved = false;
+    const finish = (result) => {
+      if (!resolved) {
+        resolved = true;
+        resolve(result);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      finish({ alive: false, status: null, reason: "timeout" });
+    }, timeoutMs);
+
+    try {
+      const url = new URL(urlStr);
+      const lib = url.protocol === "https:" ? https : http;
+
+      const req = lib.request(
+        {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === "https:" ? 443 : 80),
+          path: url.pathname + url.search,
+          method: "HEAD",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          },
+          timeout: timeoutMs,
+        },
+        (res) => {
+          clearTimeout(timer);
+          const status = res.statusCode;
+
+          // Check for error redirects (Greenhouse pattern: ?error=true)
+          const location = res.headers.location || "";
+          if (location.includes("error=true") || location.includes("not-found")) {
+            finish({ alive: false, status, reason: `redirect to error: ${location}` });
+            return;
+          }
+
+          if (status >= 200 && status < 400) {
+            finish({ alive: true, status });
+          } else if (status === 404 || status === 410) {
+            finish({ alive: false, status, reason: `HTTP ${status}` });
+          } else {
+            // 403/5xx — might be bot-blocking, treat as uncertain but alive
+            finish({ alive: true, status, reason: `HTTP ${status} (may be bot-blocked)` });
+          }
+        },
+      );
+
+      req.on("error", (err) => {
+        clearTimeout(timer);
+        finish({ alive: false, status: null, reason: err.message });
+      });
+
+      req.on("timeout", () => {
+        req.destroy();
+        clearTimeout(timer);
+        finish({ alive: false, status: null, reason: "timeout" });
+      });
+
+      req.end();
+    } catch (err) {
+      clearTimeout(timer);
+      finish({ alive: false, status: null, reason: err.message });
+    }
+  });
+}

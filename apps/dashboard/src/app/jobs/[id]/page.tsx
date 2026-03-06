@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getJobDetail, getJobAutomationContext } from "@/lib/queries";
 import type { JobDetail, JobDetailApplication } from "@/lib/queries";
+import type { AutomationLog } from "@/lib/database.types";
 import { formatDateTime, formatLabel, formatSalaryRange } from "@/lib/format";
 import { ScoreBadge } from "@/components/score-badge";
 

@@ -637,6 +637,45 @@ export interface Database {
           },
         ];
       };
+      communication_log: {
+        Row: {
+          id: string;
+          entity_type: "application" | "client" | "contact" | "proposal";
+          entity_id: string;
+          channel: "email" | "linkedin" | "upwork" | "fiverr" | "phone" | "video" | "in_person";
+          direction: "outbound" | "inbound";
+          subject: string | null;
+          content_summary: string | null;
+          full_content: string | null;
+          sentiment: "positive" | "neutral" | "negative" | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          entity_type: "application" | "client" | "contact" | "proposal";
+          entity_id: string;
+          channel: "email" | "linkedin" | "upwork" | "fiverr" | "phone" | "video" | "in_person";
+          direction: "outbound" | "inbound";
+          subject?: string | null;
+          content_summary?: string | null;
+          full_content?: string | null;
+          sentiment?: "positive" | "neutral" | "negative" | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          entity_type?: "application" | "client" | "contact" | "proposal";
+          entity_id?: string;
+          channel?: "email" | "linkedin" | "upwork" | "fiverr" | "phone" | "video" | "in_person";
+          direction?: "outbound" | "inbound";
+          subject?: string | null;
+          content_summary?: string | null;
+          full_content?: string | null;
+          sentiment?: "positive" | "neutral" | "negative" | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -657,6 +696,8 @@ export type CalendarEvent =
   Database["public"]["Tables"]["calendar_events"]["Row"];
 export type OutreachSequence =
   Database["public"]["Tables"]["outreach_sequences"]["Row"];
+export type CommunicationLog =
+  Database["public"]["Tables"]["communication_log"]["Row"];
 
 // Application with joined job data
 export type ApplicationWithJob = Application & {
@@ -665,3 +706,10 @@ export type ApplicationWithJob = Application & {
     "title" | "company" | "location" | "salary_min" | "salary_max" | "work_mode"
   > | null;
 };
+
+// Full application detail with full job data + communications
+export type ApplicationDetail = Application & {
+  jobs: Job | null;
+};
+
+export type CommunicationLogEntry = CommunicationLog;

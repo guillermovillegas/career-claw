@@ -3,9 +3,11 @@ import type {
   Job,
   Application,
   ApplicationWithJob,
+  ApplicationDetail,
   FreelanceProposal,
   AutomationLog,
   CalendarEvent,
+  CommunicationLog,
   Database,
 } from "./database.types";
 
@@ -323,4 +325,73 @@ export async function getProposals(
   const { data, error } = await query;
   if (error) {throw error;}
   return (data as FreelanceProposal[]) ?? [];
+}
+
+// ─── Communication Logs ─────────────────────────────────────────────
+
+export async function getCommunicationLogs(
+  limit = 100
+): Promise<CommunicationLog[]> {
+  const { data, error } = await supabase
+    .from("communication_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {throw error;}
+  return (data as CommunicationLog[]) ?? [];
+}
+
+export async function getCommunicationLogsForEntity(
+  entityType: "application" | "client" | "contact" | "proposal",
+  entityId: string
+): Promise<CommunicationLog[]> {
+  const { data, error } = await supabase
+    .from("communication_log")
+    .select("*")
+    .eq("entity_type", entityType)
+    .eq("entity_id", entityId)
+    .order("created_at", { ascending: false });
+
+  if (error) {throw error;}
+  return (data as CommunicationLog[]) ?? [];
+}
+
+// ─── Application Detail ─────────────────────────────────────────────
+
+export async function getApplicationDetail(
+  id: string
+): Promise<ApplicationDetail | null> {
+  const { data, error } = await supabase
+    .from("applications")
+    .select("*, jobs(*)")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {return null;}
+    throw error;
+  }
+  return data as unknown as ApplicationDetail;
+}
+
+// Automation logs around an application's created_at
+export async function getApplicationAutomationContext(
+  appCreatedAt: string
+): Promise<AutomationLog[]> {
+  const center = new Date(appCreatedAt).getTime();
+  const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+  const from = new Date(center - WINDOW_MS).toISOString();
+  const to = new Date(center + WINDOW_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("automation_logs")
+    .select("*")
+    .gte("created_at", from)
+    .lte("created_at", to)
+    .order("created_at", { ascending: true })
+    .limit(10);
+
+  if (error) {throw error;}
+  return (data as AutomationLog[]) ?? [];
 }

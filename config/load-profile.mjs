@@ -100,24 +100,30 @@ export function getCoverLetterConfig() {
  */
 export function buildCoverLetterPrompt(title, company, mode) {
   const cl = getCoverLetterConfig();
-  return `Write a 100-140 word cover letter for ${cl.fullName} applying to: ${title} at ${company} (${mode}).
+  return `Write a cover letter (150-200 words) for ${cl.fullName} applying to: ${title} at ${company} (${mode}).
 
-FORMAT — exactly two paragraphs, then the name on its own line:
-Paragraph 1: Name the role. Then one concrete achievement from the background below that directly matches THIS role type. Include the exact numbers.
-Paragraph 2: A second, different proof point. End the paragraph, then put "${cl.fullName}" alone on the final line.
+STRUCTURE — three paragraphs:
 
-BACKGROUND (use these facts — pick the most relevant):
+Paragraph 1 (3-4 sentences): Open with a direct statement connecting his strongest relevant achievement to the ${title} role at ${company}. Name "${company}" and the role title. Lead with the most relevant proof point from the background below — use exact numbers. Explain WHY this experience matters for this specific role.
+
+Paragraph 2 (3-4 sentences): A second, different proof point that shows range. If paragraph 1 used AI/ML experience, use the business/portfolio experience here (or vice versa). Connect it to what a ${title} would need to do.
+
+Paragraph 3 (1-2 sentences): A forward-looking close. Reference the ${title} role at ${company} by name. End with interest in discussing further. Then "${cl.fullName}" alone on the final line.
+
+BACKGROUND (use these facts — pick the most relevant for THIS role):
 ${cl.backgroundText}
 
 ROLE-MATCHING GUIDE (which facts to lead with per role type):
 ${cl.roleGuideText}
 
-STRICT RULES — violating any of these makes the output unusable:
-1. Do NOT invent facts about ${company}. You know nothing about them. Only reference the role title.
-2. Do NOT start with any greeting. No "Dear", no "To Whom", no "I am writing", no "I am applying". Start with a direct statement about his work or the role.
-3. Do NOT use filler. No "I am confident", "excited to", "passionate", "proud to bring", "great fit", "perfect fit", "aligns perfectly".
-4. NEVER use any of these banned words/phrases: ${cl.bannedWords}
-5. Write in first person. Direct tone. Short sentences. No fluff.
-6. Output ONLY the letter text. No markdown, no quotes, no preamble, no labels.
-7. The letter MUST be at least 100 words. A one-sentence response is NOT acceptable.`;
+STRICT RULES — violating ANY makes the output unusable:
+1. You MUST mention "${company}" by name at least once in the letter.
+2. You MUST reference the "${title}" role specifically, not just generic "product management".
+3. Do NOT invent facts about ${company}. You know nothing about what they do. Only reference the role title and company name.
+4. Do NOT start with any greeting or filler opener. No "Dear", "To Whom", "I am writing", "I am applying", "As a seasoned". Start with a concrete fact or achievement.
+5. NEVER use these banned words/phrases: ${cl.bannedWords}
+6. Write in first person. Direct tone. Varied sentence length. No fluff.
+7. Output ONLY the letter text. No markdown, no quotes, no preamble, no labels.
+8. The letter MUST be 150-200 words. Shorter is unusable.
+9. Do NOT end paragraphs or the letter with just a name. The name goes ONLY on the very last line after the closing paragraph.`;
 }

@@ -21,6 +21,7 @@ import {
   getFormAnswers,
   loadProfile,
 } from "../../config/load-profile.mjs";
+import { validateCoverLetter, validateApplication, checkUrlLiveness } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -1388,7 +1389,7 @@ if (!existsSync(RESUME_PATH)) {
 
 // Fetch interested applications with cover letters
 const applications = await sGet(
-  `applications?status=eq.interested&cover_letter=not.is.null&select=id,job_id,cover_letter,match_score,priority&order=match_score.desc&limit=${LIMIT}`,
+  `applications?status=eq.interested&cover_letter=not.is.null&select=id,job_id,status,cover_letter,match_score,priority,notes&order=match_score.desc&limit=${LIMIT}`,
 );
 
 if (!applications.length) {
@@ -1432,6 +1433,64 @@ if (!toSubmit.length) {
   process.exit(0);
 }
 
+// ─── Pre-submit quality gate ─────────────────────────────────────────────────
+console.log("Running pre-submit validation...");
+const validated = [];
+let gateBlocked = 0;
+
+for (const app of toSubmit) {
+  const job = jobMap[app.job_id];
+  const blockReasons = [];
+
+  // Validate cover letter
+  if (app.cover_letter) {
+    const clCheck = validateCoverLetter(app.cover_letter);
+    if (!clCheck.valid) {
+      blockReasons.push(`cover letter: ${clCheck.reason}`);
+    }
+  } else {
+    blockReasons.push("missing cover letter");
+  }
+
+  // Validate application data
+  const appCheck = validateApplication(app);
+  if (!appCheck.valid) {
+    for (const issue of appCheck.issues) {
+      if (!issue.startsWith("cover letter:")) {
+        blockReasons.push(issue);
+      }
+    }
+  }
+
+  // URL liveness check (skip on network error to avoid blocking good apps)
+  if (job?.url) {
+    const urlCheck = await checkUrlLiveness(job.url);
+    if (!urlCheck.alive && urlCheck.reason !== "timeout") {
+      blockReasons.push(`dead URL: ${urlCheck.reason}`);
+    }
+  }
+
+  if (blockReasons.length > 0) {
+    gateBlocked++;
+    console.log(`  BLOCKED: ${job?.title} @ ${job?.company} — ${blockReasons.join("; ")}`);
+    // Update notes so we don't retry this app next run
+    if (!DRY_RUN) {
+      const notes =
+        (app.notes || "") + ` | Pre-submit blocked: ${blockReasons.join("; ")} (${TODAY})`;
+      await sPatch("applications", app.id, { notes });
+    }
+  } else {
+    validated.push(app);
+  }
+}
+
+console.log(`Pre-submit gate: ${validated.length} passed, ${gateBlocked} blocked\n`);
+
+if (!validated.length) {
+  console.log("All applications blocked by pre-submit gate.");
+  process.exit(0);
+}
+
 // Launch browser
 const browser = await chromium.launch({ headless: !HEADED, slowMo: HEADED ? 100 : 0 });
 const context = await browser.newContext({
@@ -1442,13 +1501,15 @@ const context = await browser.newContext({
 
 let submitted = 0;
 let failed = 0;
+const submitResults = [];
+const submitStartTime = Date.now();
 
-for (const [i, application] of toSubmit.entries()) {
+for (const [i, application] of validated.entries()) {
   const job = jobMap[application.job_id];
   const platform = detectPlatform(job.url);
   const num = i + 1;
 
-  console.log(`─── [${num}/${toSubmit.length}] ${job.title} @ ${job.company} ───`);
+  console.log(`─── [${num}/${validated.length}] ${job.title} @ ${job.company} ───`);
   console.log(`    Score:    ${application.match_score}`);
   console.log(`    Platform: ${platform}`);
   console.log(`    URL:      ${job.url}`);
@@ -1480,6 +1541,13 @@ for (const [i, application] of toSubmit.entries()) {
     } else {
       console.log(`    ✓ Submitted`);
       submitted++;
+      submitResults.push({
+        title: job.title,
+        company: job.company,
+        platform,
+        score: application.match_score,
+        status: "submitted",
+      });
       await sPatch("applications", application.id, {
         status: "applied",
         application_date: TODAY,
@@ -1488,6 +1556,14 @@ for (const [i, application] of toSubmit.entries()) {
     }
   } else {
     console.log(`    ✗ ${result.reason}`);
+    submitResults.push({
+      title: job.title,
+      company: job.company,
+      platform,
+      score: application.match_score,
+      status: "failed",
+      reason: String(result.reason).slice(0, 200),
+    });
     if (!DRY_RUN) {
       await sPatch("applications", application.id, {
         notes: `Auto-submit failed (${platform}): ${result.reason} — submit manually at: ${job.url}`,
@@ -1541,11 +1617,20 @@ if (formLog.length > 0) {
       },
       body: JSON.stringify({
         action_type: "application_submit",
+        platform: "playwright",
+        success: failed === 0,
+        execution_time_ms: Date.now() - submitStartTime,
+        error_message: failed > 0 ? `${failed} submission(s) failed` : null,
         details: {
           source: "playwright",
           date: TODAY,
           submitted,
           failed,
+          gate_passed: validated.length,
+          gate_blocked: gateBlocked,
+          manual: manual.length,
+          total_interested: applications.length,
+          per_job: submitResults,
           form_qa: summary,
         },
       }),
