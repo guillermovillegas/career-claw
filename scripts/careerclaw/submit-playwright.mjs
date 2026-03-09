@@ -566,6 +566,37 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           }).catch(async () => {
             await pickReactSelect(page, el, {}).catch(() => {});
           });
+        } else if (
+          /describes you|what.*are you|type of applicant|applicant type|best describes/i.test(lbl)
+        ) {
+          // Bot detection / applicant type — pick "human" or most benign option
+          await pickReactSelect(page, el, {
+            matchFn: (t) =>
+              /human|individual|job seeker|candidate|person|none of the above|not a recruiter|direct applicant/i.test(
+                t,
+              ),
+          }).catch(() => {});
+        } else if (/residing.*eu|residing.*europe|eu or ukraine|within the eu/i.test(lbl)) {
+          // EU residency — No (US-based)
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(async () => {
+            await el.selectOption?.({ label: "No" }).catch(() => {});
+          });
+        } else if (/tax.*residen|country.*tax|tax.*jurisdiction/i.test(lbl)) {
+          // Tax residence — United States
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+          }).catch(async () => {
+            await pickReactSelect(page, el, { search: "United States" }).catch(() => {});
+          });
+        } else if (/metaview|consent.*transcrib|consent.*record|interview.*record/i.test(lbl)) {
+          // Metaview / interview recording consent — Yes
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^yes\b/i.test(t.trim()),
+          }).catch(async () => {
+            await el.selectOption?.({ label: "Yes" }).catch(() => {});
+          });
         } else if (lbl) {
           // Unknown required React Select — open and pick first non-empty option
           await pickReactSelect(page, el, {}).catch(() => {});
@@ -580,6 +611,27 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el
             .selectOption({ label: "No" })
             .catch(() => el.selectOption({ index: 2 }).catch(() => {}));
+        } else if (/residing.*eu|within the eu|eu or ukraine/i.test(lbl)) {
+          await el
+            .selectOption({ label: "No" })
+            .catch(() => el.selectOption({ index: 2 }).catch(() => {}));
+        } else if (/tax.*residen|country.*tax/i.test(lbl)) {
+          await el
+            .selectOption({ label: "United States" })
+            .catch(() => el.selectOption({ label: "US" }).catch(() => {}));
+        } else if (/metaview|consent.*transcrib|consent.*record/i.test(lbl)) {
+          await el
+            .selectOption({ label: "Yes" })
+            .catch(() => el.selectOption({ index: 1 }).catch(() => {}));
+        } else if (/describes you|applicant type|type of applicant/i.test(lbl)) {
+          // Bot detection — skip (don't auto-fill with "AI" option)
+          const opts = await el.locator("option").allTextContents();
+          const human = opts.find((o) =>
+            /human|individual|job seeker|candidate|person|none|direct/i.test(o),
+          );
+          if (human) {
+            await el.selectOption({ label: human }).catch(() => {});
+          }
         } else {
           // EEO or unknown — pick first non-blank
           const opts = await el.locator("option").allTextContents();
@@ -611,6 +663,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           await el.fill(FA.why_interested || "").catch(() => {});
+        } else if (
+          /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample/i.test(lbl)
+        ) {
+          // Work samples — provide website and GitHub
+          await el
+            .fill("https://myportfolio.vercel.app | https://github.com/janedoe")
+            .catch(() => {});
         } else if (/how did you (hear|find|learn)|how.*hear.*about/i.test(lbl)) {
           await el.fill("LinkedIn").catch(() => {});
         } else if (/tell us|anything.*add|additional.*info|anything.*else/i.test(lbl)) {
@@ -632,7 +691,10 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill(P.first_name).catch(() => {});
         } else if (/email/i.test(lbl)) {
           await el.fill(P.email).catch(() => {});
-        } else if (/phone/i.test(lbl) && f.type === "tel") {
+        } else if (
+          /phone/i.test(lbl) &&
+          (f.type === "tel" || f.type === "text" || f.id === "phone")
+        ) {
           await el.fill(P.phone_formatted).catch(() => {});
         } else if (/linkedin/i.test(lbl) && !/github/i.test(lbl)) {
           await el.fill(P.linkedin).catch(() => {});
@@ -688,6 +750,10 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
         } else if (/current.*location|where.*located|location.*city|your.*location/i.test(lbl)) {
           await el.fill(P.location).catch(() => {});
+        } else if (
+          /country.*time.*zone|time.*zone.*country|where.*based.*time|country.*based/i.test(lbl)
+        ) {
+          await el.fill("United States, Central Time (CT)").catch(() => {});
         } else if (
           /target.*compensation|compensation.*range|desired.*comp|total.*comp|expected.*comp/i.test(
             lbl,
@@ -819,7 +885,11 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           return next?.textContent?.trim() || "";
         })
         .catch(() => "");
-      if (/^(united states|us|usa|u\.s\.?)$/i.test(cbLabel.trim())) {
+      const trimmedCbLabel = cbLabel.trim();
+      if (
+        /^(united states|us|usa|u\.s\.?)$/i.test(trimmedCbLabel) ||
+        /^u\.?s\.?\s*(citizen|national)/i.test(trimmedCbLabel)
+      ) {
         const checked = await cb.isChecked().catch(() => false);
         if (!checked) {
           await cb.check().catch(() => {});
@@ -1066,7 +1136,7 @@ async function submitGreenhouse(page, job, coverLetter) {
       .first()
       .isVisible({ timeout: 2000 })
       .catch(() => false);
-    if (secCodeVisible || /verification code.*sent to/i.test(bodyText)) {
+    if (secCodeVisible) {
       // Take a screenshot of the verification screen for debugging
       const verifyScreenPath = `/tmp/gh-verify-${Date.now()}.png`;
       await page.screenshot({ path: verifyScreenPath, fullPage: false }).catch(() => {});
