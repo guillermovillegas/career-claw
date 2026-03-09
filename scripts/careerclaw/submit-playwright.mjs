@@ -228,10 +228,11 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
     if ((await el.count()) === 0) {
       return false;
     }
+
+    // Try typing to search first
     await el.click({ timeout: 3000 });
     await page.waitForTimeout(200);
     if (search) {
-      // Clear first, then type
       await el.evaluate((node) => {
         node.value = "";
       });
@@ -240,23 +241,61 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
     } else {
       await page.waitForTimeout(400);
     }
+
     // Select__option is unique to React Select (phone ITI uses iti__country)
-    const opts = page.locator('[class*="select__option"]:not([class*="selected"])');
-    const count = await opts.count();
+    let opts = page.locator('[class*="select__option"]:not([class*="selected"])');
+    let count = await opts.count();
+
+    // If typing produced no results, try opening the dropdown by clicking the control
+    // and browsing the full options list (common in iframe forms where keyboard input
+    // doesn't trigger React Select's filter)
+    if (!count && (search || matchFn)) {
+      // Close any open menu, then click the select control to open the full list
+      const kb = page.keyboard || page.page?.()?.keyboard;
+      if (kb) {
+        await kb.press("Escape").catch(() => {});
+      }
+      await page.waitForTimeout(200);
+
+      const container = el
+        .locator('xpath=ancestor::*[contains(@class,"select__container")]')
+        .first();
+      const control = container.locator(".select__control").first();
+      if ((await control.count()) > 0) {
+        await control.click();
+        await page.waitForTimeout(500);
+        // Get options from within this select's menu
+        const menuOpts = container.locator('[class*="select__option"]');
+        count = await menuOpts.count();
+        if (count > 0) {
+          opts = menuOpts;
+        }
+      }
+    }
+
     if (!count) {
-      // Try pressing Enter to accept typed value
-      await page.keyboard.press("Enter");
+      const kb = page.keyboard || page.page?.()?.keyboard;
+      if (kb) {
+        await kb.press("Enter").catch(() => {});
+      }
       return true;
     }
+
     if (matchFn) {
       for (let i = 0; i < count; i++) {
         const t = (await opts.nth(i).textContent()) || "";
         if (matchFn(t)) {
+          await opts
+            .nth(i)
+            .scrollIntoViewIfNeeded()
+            .catch(() => {});
+          await page.waitForTimeout(50);
           await opts.nth(i).click();
           return true;
         }
       }
     }
+    // If search was provided but no matchFn, click the first option (most relevant)
     await opts.first().click();
     return true;
   } catch {
@@ -362,6 +401,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           if (!checked) {
             await el.check().catch(() => {});
           }
+        } else if (/^(united states|us|usa|u\.s\.?)$/i.test(lbl.trim())) {
+          // Country checkbox lists (e.g. "countries you anticipate working in")
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
         }
         continue;
       }
@@ -372,7 +417,9 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
       if (isReactSelect) {
         // ─── React Select dropdowns ───────────────────────────────────────────
         if (/country/i.test(lbl) && !/country.*cuba|ofac/i.test(lbl)) {
-          await pickReactSelect(page, el, { search: "United States" });
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+          });
         } else if (/location.*city|city.*location/i.test(lbl)) {
           await pickReactSelect(page, el, { search: "Chicago" });
         } else if (
@@ -457,14 +504,68 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await pickReactSelect(page, el, {
             matchFn: (t) => /linkedin|job board|website/i.test(t),
           });
-        } else if (
-          /gender|race|ethnicity|veteran|disability|sexual|transgender|hispanic/i.test(lbl)
-        ) {
-          // EEO — pick "decline" option; if none found, leave blank (these are not required)
+        } else if (/gender/i.test(lbl) && !/race|ethnicity/i.test(lbl)) {
+          // Gender — select Male
           await pickReactSelect(page, el, {
-            matchFn: (t) =>
-              /decline|don.t wish|prefer not|choose not|not to answer|rather not/i.test(t),
+            matchFn: (t) => /^male$/i.test(t.trim()),
+          }).catch(async () => {
+            await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not/i.test(t),
+            }).catch(() => {});
+          });
+        } else if (/hispanic|latino/i.test(lbl)) {
+          // Hispanic/Latino — select Yes
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^yes\b|hispanic.*latino|latino.*hispanic/i.test(t.trim()),
           }).catch(() => {});
+        } else if (/race|ethnicity/i.test(lbl) && !/hispanic|latino/i.test(lbl)) {
+          // Race/Ethnicity — select Hispanic or Latino if available, otherwise decline
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /hispanic|latino/i.test(t),
+          }).catch(async () => {
+            await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not|choose not/i.test(t),
+            }).catch(() => {});
+          });
+        } else if (/veteran/i.test(lbl)) {
+          // Veteran status — not a veteran
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /not a.*veteran|no\b|i am not|non-/i.test(t.trim()),
+          }).catch(async () => {
+            await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not/i.test(t),
+            }).catch(() => {});
+          });
+        } else if (/disability/i.test(lbl)) {
+          // Disability — no disability
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /no,.*don.t|do not have|no\b.*disability|i don.t/i.test(t.trim()),
+          }).catch(async () => {
+            await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not/i.test(t),
+            }).catch(() => {});
+          });
+        } else if (/sexual|transgender/i.test(lbl)) {
+          // Sexual orientation / transgender — decline
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /decline|prefer not|choose not|not to answer/i.test(t),
+          }).catch(() => {});
+        } else if (/degree|education.*level|highest.*education/i.test(lbl)) {
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /bachelor/i.test(t),
+          }).catch(async () => {
+            await pickReactSelect(page, el, { search: "Bachelor" }).catch(() => {});
+          });
+        } else if (/school|university|college/i.test(lbl)) {
+          await pickReactSelect(page, el, { search: "University of Illinois" }).catch(() => {});
+        } else if (/field.*study|major|area.*study/i.test(lbl)) {
+          await pickReactSelect(page, el, { search: "Computer Science" }).catch(() => {});
+        } else if (/notice.*period|availability|start.*date|when.*start/i.test(lbl)) {
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /2 week|immediate|asap|1-2|two week/i.test(t),
+          }).catch(async () => {
+            await pickReactSelect(page, el, {}).catch(() => {});
+          });
         } else if (lbl) {
           // Unknown required React Select — open and pick first non-empty option
           await pickReactSelect(page, el, {}).catch(() => {});
@@ -543,6 +644,9 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           // Skip — no Twitter
         } else if (/salary.*expect|desired.*salary/i.test(lbl)) {
           await el.fill(FA.compensation_expectation || "200000").catch(() => {});
+        } else if (/city.*state|state.*city/i.test(lbl)) {
+          // "city and state" combo field (e.g. Stripe: "in what city and state do you reside?")
+          await el.fill("Chicago, IL").catch(() => {});
         } else if (/what state|state.*located|located.*state/i.test(lbl)) {
           await el.fill("Illinois").catch(() => {});
         } else if (/phonetic|pronounce|pronunciation/i.test(lbl)) {
@@ -627,6 +731,27 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill("5").catch(() => {});
         } else if (/years.*lead|years.*manag|years.*direct/i.test(lbl)) {
           await el.fill("4").catch(() => {});
+        } else if (
+          /current.*job.*title|previous.*job.*title|most recent.*title|what is your.*title|job title/i.test(
+            lbl,
+          )
+        ) {
+          const prof = loadProfile().professional;
+          await el.fill(prof.current_title || "VP of Product").catch(() => {});
+        } else if (/school.*attend|recent.*school|university|college|what.*school/i.test(lbl)) {
+          await el.fill("University of Illinois at Chicago").catch(() => {});
+        } else if (
+          /degree.*obtain|recent.*degree|highest.*degree|what.*degree|education.*level/i.test(lbl)
+        ) {
+          await el.fill("Bachelor's").catch(() => {});
+        } else if (/field.*study|major|area.*study|concentration/i.test(lbl)) {
+          await el.fill("Computer Science").catch(() => {});
+        } else if (/graduation.*year|year.*graduat/i.test(lbl)) {
+          await el.fill("2015").catch(() => {});
+        } else if (/notice.*period|start.*date|available.*start|earliest.*start/i.test(lbl)) {
+          await el.fill("2 weeks").catch(() => {});
+        } else if (/current.*location.*city|where.*based|where.*you.*located/i.test(lbl)) {
+          await el.fill("Chicago, IL").catch(() => {});
         }
         // Unknown text fields: leave blank (non-required will pass)
       }
@@ -662,6 +787,87 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await pickReactSelect(page, sel, { matchFn: (t) => /^no\b/i.test(t.trim()) }).catch(
             () => {},
           );
+        } else if (/country.*reside|reside.*country|where.*currently.*reside/i.test(qText)) {
+          await pickReactSelect(page, sel, {
+            matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+          }).catch(() => {});
+        } else if (/degree|education.*level|highest.*education/i.test(qText)) {
+          await pickReactSelect(page, sel, {
+            matchFn: (t) => /bachelor/i.test(t),
+          }).catch(() => {});
+        } else if (/school|university/i.test(qText)) {
+          await pickReactSelect(page, sel, { search: "University of Illinois" }).catch(() => {});
+        }
+      }
+    }
+  } catch {}
+
+  // ─── Third pass: country checkbox groups ──────────────────────────────────
+  // Some GH forms have "Select countries you'll work in" with individual country checkboxes
+  try {
+    const usCheckboxes = page.locator('input[type="checkbox"]');
+    const cbCount = await usCheckboxes.count();
+    for (let i = 0; i < cbCount; i++) {
+      const cb = usCheckboxes.nth(i);
+      const cbLabel = await cb
+        .evaluate((el) => {
+          const lbl = el.labels?.[0]?.textContent?.trim() || "";
+          if (lbl) {
+            return lbl;
+          }
+          const next = el.nextElementSibling || el.parentElement;
+          return next?.textContent?.trim() || "";
+        })
+        .catch(() => "");
+      if (/^(united states|us|usa|u\.s\.?)$/i.test(cbLabel.trim())) {
+        const checked = await cb.isChecked().catch(() => false);
+        if (!checked) {
+          await cb.check().catch(() => {});
+        }
+      }
+    }
+  } catch {}
+
+  // ─── Fourth pass: country reside React Select by scanning all label+select pairs ──
+  // Catches country reside selects that the first/second pass missed (common in iframe forms)
+  try {
+    const allLabels = await page.locator("label").all();
+    for (const lbl of allLabels) {
+      const text = (await lbl.textContent().catch(() => "")).toLowerCase();
+      if (!/country.*reside|reside.*country|currently.*reside/i.test(text)) {
+        continue;
+      }
+      // Find the associated React Select input
+      const forId = await lbl.getAttribute("for").catch(() => "");
+      if (forId) {
+        const input = page.locator(`[id="${forId}"]`);
+        if ((await input.count()) > 0) {
+          const val = await input.inputValue().catch(() => "");
+          if (!val) {
+            await pickReactSelect(page, input, {
+              matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+            }).catch(() => {});
+          }
+        }
+      }
+      // Also try sibling/descendant select within the field container
+      const field = lbl
+        .locator(
+          "xpath=ancestor::*[contains(@class,'field') or contains(@class,'select__container')]",
+        )
+        .first();
+      if ((await field.count()) > 0) {
+        const selectInput = field.locator(".select__input");
+        if ((await selectInput.count()) > 0) {
+          const val = await selectInput
+            .first()
+            .inputValue()
+            .catch(() => "");
+          if (!val) {
+            await pickReactSelect(page, selectInput.first(), {
+              matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+            }).catch(() => {});
+          }
         }
       }
     }
@@ -810,9 +1016,12 @@ async function submitGreenhouse(page, job, coverLetter) {
   await clearStaleGhCodes();
 
   // Submit (use formCtx which may be an iframe)
+  // Note: GH embed forms use input[type="button"]#submit_app, not type="submit"
   const submitBtn = formCtx
     .locator(
       [
+        "input#submit_app",
+        'input[value="Submit Application"]',
         'button[type="submit"]',
         'input[type="submit"]',
         'button:has-text("Submit application")',
@@ -849,9 +1058,15 @@ async function submitGreenhouse(page, job, coverLetter) {
     ) {
       return { success: true };
     }
-    if (
-      /verification code.*sent|security code|confirm you.re a human|enter.*code/i.test(bodyText)
-    ) {
+    // Check if email verification is actually required (not just hidden HTML boilerplate)
+    // Greenhouse embed forms always have "security code" text in hidden divs.
+    // Only trigger verification flow if the security_code input is actually visible.
+    const secCodeVisible = await formCtx
+      .locator('#security_code, [id="security-input-0"]')
+      .first()
+      .isVisible({ timeout: 2000 })
+      .catch(() => false);
+    if (secCodeVisible || /verification code.*sent to/i.test(bodyText)) {
       // Take a screenshot of the verification screen for debugging
       const verifyScreenPath = `/tmp/gh-verify-${Date.now()}.png`;
       await page.screenshot({ path: verifyScreenPath, fullPage: false }).catch(() => {});
@@ -907,7 +1122,7 @@ async function submitGreenhouse(page, job, coverLetter) {
           // Re-submit
           const resubmitBtn = codeCtx
             .locator(
-              'button[type="submit"], button:has-text("Submit"), button:has-text("Verify"), button:has-text("Continue")',
+              'input#submit_app, input[value="Submit Application"], button[type="submit"], button:has-text("Submit"), button:has-text("Verify"), button:has-text("Continue")',
             )
             .last();
           await resubmitBtn.click().catch(() => submitBtn.click().catch(() => {}));
@@ -976,6 +1191,14 @@ async function submitGreenhouse(page, job, coverLetter) {
         success: false,
         reason: `Validation errors: ${errDetails.join(" | ") || "unknown fields"} (screenshot: ${debugPath})`,
       };
+    }
+    // Check for reCAPTCHA block (common on embed forms)
+    const captchaErr = await formCtx
+      .locator("#captcha_error_message")
+      .isVisible({ timeout: 1000 })
+      .catch(() => false);
+    if (captchaErr || /flagged as potential bot|captcha|recaptcha/i.test(bodyText)) {
+      return { success: false, reason: "reCAPTCHA blocked — submit manually" };
     }
     // No clear error → treat as success (some GH boards show minimal confirmation)
     return { success: true };
