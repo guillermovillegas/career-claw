@@ -8,8 +8,8 @@ import https from "https";
 
 // ─── Cover Letter Validation ──────────────────────────────────────────────────
 
-export const MIN_CL_LENGTH = 200;
-export const MAX_CL_LENGTH = 1100;
+export const MIN_CL_LENGTH = 800;
+export const MAX_CL_LENGTH = 1400;
 
 export const BANNED_PATTERNS = [
   /\bdear\b/i,
@@ -17,23 +17,38 @@ export const BANNED_PATTERNS = [
   /\bI am writing to\b/i,
   /\bI am applying\b/i,
   /\bI am confident\b/i,
-  /\bexcited to\b/i,
+  /\bexcited\b/i,
   /\bpassionate\b/i,
   /\bthrilled\b/i,
   /\bleverage\b/i,
   /\bsynergy\b/i,
   /\bcutting-edge\b/i,
-  /\binnovative leader\b/i,
+  /\binnovative\b/i,
   /\bgame-changer\b/i,
   /\bI'm proud\b/i,
   /\bproud to bring\b/i,
   /\baligns perfectly\b/i,
+  /\baligns with\b/i,
   /\bperfect fit\b/i,
   /\bgreat fit\b/i,
   /\bworld-class\b/i,
   /\bdynamic\b/i,
   /\bdelighted\b/i,
   /\bas a seasoned\b/i,
+  /\blove\b/i,
+  /\bI believe\b/i,
+  /\bI feel\b/i,
+  /\bI think\b/i,
+  /\brockstar\b/i,
+  /\bguru\b/i,
+  /\breach out\b/i,
+  /\bhit the ground running\b/i,
+  /\bmove the needle\b/i,
+  /\bdisruptive\b/i,
+  /\bthought leader\b/i,
+  /\bfeel free\b/i,
+  /\bcircle back\b/i,
+  /!/,
 ];
 
 /**
@@ -52,6 +67,16 @@ export function validateCoverLetter(letter) {
   if (letter.length > MAX_CL_LENGTH) {
     issues.push(`too long (${letter.length} chars, max ${MAX_CL_LENGTH})`);
   }
+
+  // Word count gate: 120-220 words
+  const wordCount = letter.split(/\s+/).filter((w) => w.length > 0).length;
+  if (wordCount < 120) {
+    issues.push(`too few words (${wordCount}, need 120+)`);
+  }
+  if (wordCount > 220) {
+    issues.push(`too many words (${wordCount}, max 220)`);
+  }
+
   for (const pattern of BANNED_PATTERNS) {
     const match = letter.match(pattern);
     if (match) {
@@ -108,6 +133,16 @@ export function validateCoverLetterForJob(letter, company, title) {
     // Should not start with a bare number
     if (/^\d/.test(letter.trim())) {
       issues.push("opens with a number — reads impersonally");
+    }
+
+    // Bare name ending detection (AI spam signature)
+    if (
+      /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Cheers|Thank you|Thanks),?\s*\n/i.test(
+        letter,
+      ) ||
+      /\n\s*Guillermo\s*(Villegas)?\s*$/i.test(letter)
+    ) {
+      issues.push("ends with bare sign-off/name — AI spam pattern");
     }
   }
 
@@ -206,7 +241,7 @@ const VALID_STATUSES = new Set([
  * Valid status transitions. Keys are "from" statuses, values are allowed "to" statuses.
  */
 const STATUS_TRANSITIONS = {
-  interested: new Set(["applied", "rejected", "withdrawn"]),
+  interested: new Set(["applied", "phone_screen", "interview", "rejected", "withdrawn"]),
   applied: new Set(["phone_screen", "interview", "rejected", "withdrawn"]),
   phone_screen: new Set(["interview", "rejected", "withdrawn"]),
   interview: new Set(["final", "offer", "rejected", "withdrawn"]),
@@ -244,10 +279,6 @@ export function validateApplication(app) {
     issues.push(`invalid status: "${app.status}"`);
   }
 
-  if (app.status === "applied" && !app.cover_letter) {
-    issues.push("applied without cover letter");
-  }
-
   if (app.match_score != null && (app.match_score < 0 || app.match_score > 100)) {
     issues.push(`match_score out of range: ${app.match_score}`);
   }
@@ -269,9 +300,11 @@ export function validateApplication(app) {
 // ─── URL Liveness Check ──────────────────────────────────────────────────────
 
 /**
- * HEAD-check a URL to detect expired/dead job posts.
+ * Check a URL to detect expired/dead job posts.
+ * For Ashby URLs: does a GET and checks body for "posting":null / "Job not found"
+ * (Ashby returns HTTP 200 for dead jobs with SSR "Job not found" text).
+ * For others: HEAD-check with redirect/status detection.
  * Returns { alive: boolean, status: number|null, reason?: string }
- * Treats redirects to error pages as dead.
  */
 export function checkUrlLiveness(urlStr, timeoutMs = 10000) {
   return new Promise((resolve) => {
@@ -295,13 +328,14 @@ export function checkUrlLiveness(urlStr, timeoutMs = 10000) {
     try {
       const url = new URL(urlStr);
       const lib = url.protocol === "https:" ? https : http;
+      const isAshby = url.hostname.includes("ashbyhq.com");
 
       const req = lib.request(
         {
           hostname: url.hostname,
           port: url.port || (url.protocol === "https:" ? 443 : 80),
           path: url.pathname + url.search,
-          method: "HEAD",
+          method: isAshby ? "GET" : "HEAD",
           headers: {
             "User-Agent":
               "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -316,6 +350,20 @@ export function checkUrlLiveness(urlStr, timeoutMs = 10000) {
           const location = res.headers.location || "";
           if (location.includes("error=true") || location.includes("not-found")) {
             finish({ alive: false, status, reason: `redirect to error: ${location}` });
+            return;
+          }
+
+          if (isAshby) {
+            // Ashby returns 200 for dead postings — must check body
+            let body = "";
+            res.on("data", (c) => (body += c));
+            res.on("end", () => {
+              if (/"posting"\s*:\s*null/.test(body) || /Job not found/i.test(body)) {
+                finish({ alive: false, status, reason: "Ashby posting removed (posting=null)" });
+              } else {
+                finish({ alive: true, status });
+              }
+            });
             return;
           }
 

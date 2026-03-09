@@ -47,7 +47,7 @@ if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
 // ─── Parse args ──────────────────────────────────────────────────────────────
 let DRY_RUN = false;
 let SINCE = new Date(Date.now() - 24 * 60 * 60 * 1000); // default: last 24h
-let EMAIL_LIMIT = 100;
+let EMAIL_LIMIT = 500;
 
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === "--dry-run") {
@@ -136,18 +136,32 @@ const REJECTION_PATTERNS = [
   /will not be advancing/i,
   /your application.*unsuccessful/i,
   /we (chose|selected) (a |an )?(other|another|different) candidate/i,
+  /important information about your application/i,
+  /update (regarding|on|about) your application/i,
+  /not (be )?mov(e|ing) forward with your/i,
+  /will not be pursuing/i,
+  /won't be (moving|proceeding|advancing)/i,
+  /no longer (being )?consider/i,
+  /not .{0,20}right match/i,
+  /decided to (go|move) in (a )?different direction/i,
+  /pursue other candidates/i,
+  /not .{0,20}(progress|continue|advance) (your|with)/i,
+  /role has been (closed|filled|cancelled)/i,
+  /we('ve| have) (decided|chosen) to .{0,20}other/i,
+  /at this time.*not/i,
 ];
 
 const INTERVIEW_PATTERNS = [
   /schedule (a|an|your) (phone|video|virtual|technical|onsite|on-site|final)?\s*interview/i,
   /like to (invite|schedule) you/i,
-  /next (round|step|stage)/i,
   /meet with (the|our) (team|hiring|manager)/i,
   /phone screen/i,
   /book a time/i,
-  /calendly\.com/i,
+  /calendly\.com\/[a-z]/i,
   /pick a (time|slot)/i,
   /availability for (a |an )?(call|chat|interview|meeting)/i,
+  /next steps.*interview/i,
+  /moving you forward/i,
 ];
 
 const ASSESSMENT_PATTERNS = [
@@ -172,10 +186,18 @@ const OFFER_PATTERNS = [
 
 /**
  * Classify an email body into a response type.
- * Returns: 'rejection' | 'interview' | 'assessment' | 'offer' | 'generic' | null
+ * Returns: 'rejection' | 'interview' | 'assessment' | 'offer' | 'confirmation' | 'generic' | null
  */
 function classifyEmail(subject, body) {
   const text = `${subject} ${body}`;
+
+  // Skip security codes and verification emails (not actionable)
+  if (/security code for your application/i.test(subject)) {
+    return "generic";
+  }
+
+  // "Thank you for applying" subjects are confirmations unless body strongly says otherwise
+  const isThankYouSubject = /thank you for (applying|your (interest|application))/i.test(subject);
 
   // Check in priority order (offer > interview > assessment > rejection)
   for (const p of OFFER_PATTERNS) {
@@ -185,6 +207,15 @@ function classifyEmail(subject, body) {
   }
   for (const p of INTERVIEW_PATTERNS) {
     if (p.test(text)) {
+      // If subject says "thank you for applying", only classify as interview if
+      // the body genuinely mentions scheduling (not just boilerplate "next steps")
+      if (isThankYouSubject) {
+        const hasStrongInterview =
+          /schedule.{0,20}interview|calendly\.com|book a time|pick a (time|slot)/i.test(body);
+        if (!hasStrongInterview) {
+          continue; // skip this match, let it fall through to confirmation
+        }
+      }
       return "interview";
     }
   }
@@ -197,6 +228,24 @@ function classifyEmail(subject, body) {
     if (p.test(text)) {
       return "rejection";
     }
+  }
+
+  // Subject-only heuristics for undecoded bodies
+  if (
+    /^(your application to|update from|update on your|update regarding)/i.test(subject) &&
+    !/thank you|received|confirmation/i.test(subject)
+  ) {
+    // "Your application to X" and "Update from X" are overwhelmingly rejections
+    return "rejection";
+  }
+
+  // Application confirmations (not status-changing but worth logging)
+  if (
+    /thank you for (applying|your (interest|application))|application (received|confirmation)|we got your application/i.test(
+      subject,
+    )
+  ) {
+    return "confirmation";
   }
 
   return "generic";
@@ -215,6 +264,8 @@ function classificationToStatus(classification) {
       return "phone_screen"; // assessments go to phone_screen stage
     case "offer":
       return "offer";
+    case "confirmation":
+      return "applied"; // confirmation means we successfully applied
     default:
       return null; // generic emails don't change status
   }
@@ -338,14 +389,51 @@ try {
     const senderCore = coreDomain(senderDomain);
     const subject = msg.envelope?.subject || "";
 
-    // Decode body (basic: strip HTML, decode QP)
+    // Decode body: handle base64 MIME parts, QP, and plain text
     const rawSource = msg.source?.toString("utf8") || "";
-    const bodyText = rawSource
-      .replace(/=([A-F0-9]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-      .replace(/=\r?\n/g, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .slice(0, 5000); // limit for classification
+    let bodyText = "";
+    {
+      // Try to extract base64-encoded body parts
+      const b64Matches = rawSource.matchAll(
+        /Content-Transfer-Encoding:\s*base64\s*\r?\n\r?\n([\s\S]*?)(?:\r?\n--|\r?\n\r?\n[A-Z])/gi,
+      );
+      for (const m of b64Matches) {
+        try {
+          const decoded = Buffer.from(m[1].replace(/\s/g, ""), "base64").toString("utf8");
+          bodyText += " " + decoded;
+        } catch {}
+      }
+      // Also try QP-encoded parts
+      const qpParts = rawSource.matchAll(
+        /Content-Transfer-Encoding:\s*quoted-printable\s*\r?\n\r?\n([\s\S]*?)(?:\r?\n--|\r?\n\r?\n[A-Z])/gi,
+      );
+      for (const m of qpParts) {
+        const decoded = m[1]
+          .replace(/=([A-F0-9]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+          .replace(/=\r?\n/g, "");
+        bodyText += " " + decoded;
+      }
+      // Fallback: use raw source after headers if no MIME parts found
+      if (!bodyText.trim()) {
+        const headerEnd = rawSource.indexOf("\r\n\r\n");
+        if (headerEnd > 0) {
+          bodyText = rawSource.slice(headerEnd + 4);
+        } else {
+          bodyText = rawSource;
+        }
+        // QP decode the fallback
+        bodyText = bodyText
+          .replace(/=([A-F0-9]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+          .replace(/=\r?\n/g, "");
+      }
+      // Strip HTML and normalize
+      bodyText = bodyText
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&#\d+;/g, " ")
+        .replace(/\s+/g, " ")
+        .slice(0, 8000);
+    }
 
     // Skip common non-job emails
     if (!senderCore) {
@@ -359,6 +447,33 @@ try {
       "paypal",
       "stripe",
       "gmail",
+      "noreply",
+      "donotreply",
+      "no-reply",
+      "zoom",
+      "slack",
+      "calendar",
+      "calendly",
+      "notion",
+      "figma",
+      "vercel",
+      "netlify",
+      "heroku",
+      "digitalocean",
+      "sendgrid",
+      "mailchimp",
+      "intercom",
+      "hubspot",
+      "linkedin",
+      "facebook",
+      "twitter",
+      "instagram",
+      "youtube",
+      "spotify",
+      "dropbox",
+      "atlassian",
+      "jira",
+      "confluence",
     ]);
     // Only skip if there's no matching company
     if (skipDomains.has(senderCore) && !companyApps.has(senderCore)) {
@@ -372,18 +487,127 @@ try {
       continue;
     }
 
-    // Match to application: try company name first, then URL domain
-    let matchedEntries = companyApps.get(senderCore) || [];
-    if (matchedEntries.length === 0) {
-      matchedEntries = urlDomainApps.get(senderCore) || [];
+    // Match to application
+    let matchedEntries = [];
+
+    // ATS relay match FIRST: greenhouse-mail.io, lever, gem.com, etc. — extract company from subject
+    if (
+      matchedEntries.length === 0 &&
+      /greenhouse-mail|lever|ashby|icims|gem\.com|appreview\.gem/i.test(senderDomain || "")
+    ) {
+      // Normalize subject: strip non-printable chars (U+FFFC etc.) that break regex
+      // eslint-disable-next-line no-control-regex
+      const cleanSubject = subject.replace(/[\u0000-\u001f\ufffc-\uffff]/g, " ");
+      const subjectCompanyPatterns = [
+        // "applying to Staff engineer - AI Builder at Tomorrow.io" → "Tomorrow.io"
+        /applying to .+ at (.+?)(?:\s*[-–|]|$)/i,
+        // "Application Confirmation for Director of PM, Growth at Twin Health" → "Twin Health"
+        /Application Confirmation for .+ at (.+?)(?:\s*[-–|]|$)/i,
+        // "application to Hightouch" → "Hightouch"
+        /application to (.+?)(?:\s*[-–|]|$)/i,
+        // "applying to Glean" → "Glean"
+        /applying to (.+?)(?:\s*[-–|]|$)/i,
+        // "interest in X" → "X"
+        /interest in (.+?)(?:\s*[-–|!]|$)/i,
+        // "you.com Application Received!" → "you.com"
+        /(.+?) Application Received/i,
+        // "Lantern | Thank you for applying!" → "Lantern"
+        /^(.+?)\s*[-–|]\s*(thank|your|important|update|application|next)/i,
+        /Your (.+?) Application/i,
+        /(.+?) - Next Steps/i,
+        /from (.+?)$/i,
+      ];
+      for (const pat of subjectCompanyPatterns) {
+        const m = cleanSubject.match(pat);
+        if (m) {
+          const extracted = m[1]
+            .trim()
+            .replace(/[^a-z0-9]/gi, "")
+            .toLowerCase();
+          if (extracted.length >= 3 && companyApps.has(extracted)) {
+            matchedEntries = companyApps.get(extracted);
+            break;
+          }
+          // Also try partial match (company name might be subset)
+          for (const [companyKey, entries] of companyApps) {
+            if (
+              companyKey.length >= 4 &&
+              (extracted.includes(companyKey) || companyKey.includes(extracted))
+            ) {
+              matchedEntries = entries;
+              break;
+            }
+          }
+          if (matchedEntries.length > 0) {
+            break;
+          }
+        }
+      }
     }
 
+    // Direct company name match (non-ATS senders — skip for known ATS relay domains)
+    const isAtsRelay = /greenhouse-mail|lever|ashby|icims|gem\.com|appreview\.gem/i.test(
+      senderDomain || "",
+    );
+    if (matchedEntries.length === 0 && !isAtsRelay) {
+      matchedEntries = companyApps.get(senderCore) || [];
+    }
+    if (matchedEntries.length === 0 && !isAtsRelay) {
+      matchedEntries = urlDomainApps.get(senderCore) || [];
+    }
     if (matchedEntries.length === 0) {
-      // Try fuzzy: sender domain contains any company name substring
+      // Fuzzy: sender domain contains any company name substring
       for (const [companyKey, entries] of companyApps) {
         if (companyKey.length >= 4 && senderDomain?.includes(companyKey)) {
           matchedEntries = entries;
           break;
+        }
+      }
+    }
+
+    // Subject-based company name scan: look for any known company name in subject
+    // Use longest match to avoid false positives (e.g., "engine" inside "engineer")
+    if (matchedEntries.length === 0) {
+      const subjectLower = subject.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+      let bestMatch = null;
+      let bestLen = 0;
+      for (const [companyKey, entries] of companyApps) {
+        if (
+          companyKey.length >= 4 &&
+          companyKey.length > bestLen &&
+          subjectLower.includes(companyKey)
+        ) {
+          bestMatch = entries;
+          bestLen = companyKey.length;
+        }
+      }
+      if (bestMatch) {
+        matchedEntries = bestMatch;
+      }
+    }
+
+    // From-address company match: no-reply@companyname.com
+    if (matchedEntries.length === 0 && from.address) {
+      const fromLocal = from.address.split("@")[0]?.toLowerCase() || "";
+      // Skip generic local parts
+      if (
+        ![
+          "noreply",
+          "no-reply",
+          "donotreply",
+          "jobs",
+          "careers",
+          "recruiting",
+          "talent",
+          "hr",
+        ].includes(fromLocal.replace(/-/g, ""))
+      ) {
+        // Check if the from domain matches a company
+        for (const [companyKey, entries] of companyApps) {
+          if (companyKey.length >= 4 && senderDomain?.includes(companyKey)) {
+            matchedEntries = entries;
+            break;
+          }
         }
       }
     }
@@ -407,7 +631,11 @@ try {
 
     if (DRY_RUN) {
       if (newStatus && newStatus !== app.status) {
-        console.log(`    Would update status: ${app.status} → ${newStatus}`);
+        if (isValidStatusTransition(app.status, newStatus)) {
+          console.log(`    Would update status: ${app.status} → ${newStatus}`);
+        } else {
+          console.log(`    Skip invalid transition: ${app.status} → ${newStatus}`);
+        }
       }
       processed++;
       continue;

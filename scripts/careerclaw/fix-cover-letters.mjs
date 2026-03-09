@@ -13,7 +13,7 @@ import https from "https";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { buildCoverLetterPrompt } from "../../config/load-profile.mjs";
-import { validateCoverLetter, MIN_CL_LENGTH } from "./lib/validation.mjs";
+import { validateCoverLetterForJob, MIN_CL_LENGTH } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -38,7 +38,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 const OLLAMA_URL = "http://localhost:11434";
-const OLLAMA_MODEL = "llama3.2";
+const OLLAMA_MODEL = "qwen3:8b";
 const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = "gemini-3-flash-preview";
 
@@ -110,7 +110,11 @@ function sbPatch(path, data) {
 
 // ─── LLM generation ──────────────────────────────────────────────────────────
 async function generateWithOllama(title, company, mode) {
-  const prompt = buildCoverLetterPrompt(title, company, mode);
+  let prompt = buildCoverLetterPrompt(title, company, mode);
+  // qwen3 defaults to thinking mode — disable it to maximize output tokens
+  if (OLLAMA_MODEL.startsWith("qwen3")) {
+    prompt = "/nothink\n" + prompt;
+  }
   try {
     const res = await request(`${OLLAMA_URL}/api/generate`, {
       method: "POST",
@@ -119,14 +123,19 @@ async function generateWithOllama(title, company, mode) {
         model: OLLAMA_MODEL,
         prompt,
         stream: false,
-        options: { temperature: 0.7, num_predict: 300 },
+        options: { temperature: 0.7, num_predict: 1024 },
       }),
     });
     if (res.status !== 200) {
       throw new Error(`Ollama HTTP ${res.status}`);
     }
     const parsed = JSON.parse(res.body);
-    return parsed.response?.trim() || null;
+    let text = parsed.response?.trim() || null;
+    // Strip thinking tags if model emitted them despite /nothink
+    if (text) {
+      text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    }
+    return text;
   } catch (e) {
     console.error("  Ollama error:", e.message);
     return null;
@@ -142,7 +151,7 @@ async function generateWithGemini(title, company, mode) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 300, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: 600, temperature: 0.7 },
       }),
     });
     if (res.status !== 200) {
@@ -158,7 +167,7 @@ async function generateWithGemini(title, company, mode) {
 }
 
 async function generateValidCoverLetter(title, company, mode) {
-  const MAX_ATTEMPTS = 3;
+  const MAX_ATTEMPTS = 5;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     let letter = await generateWithGemini(title, company, mode);
     if (!letter || letter.length < MIN_CL_LENGTH) {
@@ -168,7 +177,24 @@ async function generateValidCoverLetter(title, company, mode) {
       console.log(`  Attempt ${attempt}/${MAX_ATTEMPTS}: no output`);
       continue;
     }
-    const check = validateCoverLetter(letter);
+    // Auto-repair common LLM failures before validation
+    letter = letter
+      .replace(
+        /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Warmly|Cheers|Thank you|Thanks|Respectfully),?\s*\n.*$/is,
+        "",
+      )
+      .replace(/\n\s*Guillermo\s*(Villegas)?\s*$/i, "")
+      .replace(/\baligns with\b/gi, "maps to")
+      .replace(/\binnovative\b/gi, "effective")
+      .replace(/\bexcited\b/gi, "prepared")
+      .replace(/\blove\b/gi, "value")
+      .replace(/\bI believe\b/gi, "My track record shows")
+      .replace(/\bI think\b/gi, "My experience suggests")
+      .replace(/\bI feel\b/gi, "My background demonstrates")
+      .replace(/!/g, ".")
+      .trim();
+    // Context-aware check: company + role mention required
+    const check = validateCoverLetterForJob(letter, company, title);
     if (check.valid) {
       return letter;
     }
@@ -200,12 +226,21 @@ if (!Array.isArray(apps)) {
   process.exit(1);
 }
 
-// Find bad cover letters
+// Fetch job details so we can do context-aware validation
+const allJobIds = [...new Set(apps.map((a) => a.job_id).filter(Boolean))];
+const allJobsForCheck = await sbGet(
+  "/rest/v1/jobs?select=id,title,company,work_mode&id=in.(" + allJobIds.join(",") + ")&limit=500",
+);
+const allJobMap = {};
+allJobsForCheck.forEach((j) => (allJobMap[j.id] = j));
+
+// Find bad cover letters (context-aware: checks company/role mention)
 const needsFix = apps.filter((a) => {
   if (!a.cover_letter) {
     return true;
   }
-  const check = validateCoverLetter(a.cover_letter);
+  const j = allJobMap[a.job_id];
+  const check = validateCoverLetterForJob(a.cover_letter, j?.company || "", j?.title || "");
   return !check.valid;
 });
 
@@ -240,7 +275,9 @@ for (let i = 0; i < needsFix.length; i++) {
   }
 
   const oldLen = a.cover_letter ? a.cover_letter.length : 0;
-  const oldCheck = a.cover_letter ? validateCoverLetter(a.cover_letter) : { reason: "missing" };
+  const oldCheck = a.cover_letter
+    ? validateCoverLetterForJob(a.cover_letter, j.company || "", j.title || "")
+    : { reason: "missing" };
   console.log(
     `[${i + 1}/${needsFix.length}] ${j.title} @ ${j.company} (${a.status}) — ${oldCheck.reason}`,
   );

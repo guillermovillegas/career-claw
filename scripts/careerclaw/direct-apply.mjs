@@ -185,8 +185,22 @@ async function generateCoverLetter(title, company, mode) {
       continue;
     }
 
-    // Strip trailing bare name line if present (LLMs sometimes add it after the closing paragraph)
-    letter = letter.replace(/\n\s*Jane Doe\s*$/, "").trim();
+    // Auto-repair common LLM failures before validation
+    letter = letter
+      .replace(
+        /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Warmly|Cheers|Thank you|Thanks|Respectfully),?\s*\n.*$/is,
+        "",
+      )
+      .replace(/\n\s*Guillermo\s*(Villegas)?\s*$/i, "")
+      .replace(/\baligns with\b/gi, "maps to")
+      .replace(/\binnovative\b/gi, "effective")
+      .replace(/\bexcited\b/gi, "prepared")
+      .replace(/\blove\b/gi, "value")
+      .replace(/\bI believe\b/gi, "My track record shows")
+      .replace(/\bI think\b/gi, "My experience suggests")
+      .replace(/\bI feel\b/gi, "My background demonstrates")
+      .replace(/!/g, ".")
+      .trim();
 
     // Context-aware check: company + role mention required
     const check = validateCoverLetterForJob(letter, company, title);

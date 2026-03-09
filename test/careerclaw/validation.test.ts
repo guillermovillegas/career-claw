@@ -15,14 +15,18 @@ const {
 
 // ─── validateCoverLetter ─────────────────────────────────────────────────────
 
-describe("validateCoverLetter", () => {
-  const goodLetter = [
-    "I bring 10 years of product leadership experience across B2B SaaS, AI/ML platforms, and developer tools.",
+// Helper: a well-formed 150+ word cover letter that passes all checks
+const makeGoodLetter = () =>
+  [
+    "At Levee, building a computer vision system that achieved 92% accuracy across 605 rooms reduced inspection time by 60%, earning recognition at HITEC and PhocusWire. That experience leading a zero-to-one AI product from prototype to production deployment directly applies to the challenges of scaling ML infrastructure at this company.",
     "",
-    "At my previous company, I grew the product org from 3 to 12 PMs while shipping features that increased ARR by 40%. I led the integration of ML-powered recommendations that drove a 25% lift in user engagement.",
+    "Before Levee, managing a $250M smart-home portfolio at Chamberlain Group involved turning the Ring partnership from -11% to +68% IRR through strategic product repositioning. Leading cross-functional teams of engineers, designers, and data scientists across multiple product lines built the operational muscle needed for senior product leadership. The combination of hands-on AI development and large-scale portfolio management provides a unique perspective on balancing technical depth with business outcomes.",
     "",
-    "Your team's focus on AI-native workflows aligns with my background building intelligent automation systems. I would welcome the chance to discuss how my experience can contribute to your roadmap.",
+    "The opportunity to bring both zero-to-one building experience and scaled product management to this team is compelling. A conversation about how these experiences map to the roadmap ahead would be a welcome next step.",
   ].join("\n");
+
+describe("validateCoverLetter", () => {
+  const goodLetter = makeGoodLetter();
 
   it("accepts a well-formed cover letter", () => {
     const result = validateCoverLetter(goodLetter);
@@ -52,18 +56,52 @@ describe("validateCoverLetter", () => {
     expect(result.reason).toContain("too long");
   });
 
-  it("rejects letters with banned phrases", () => {
-    const letterWithBanned = [
-      "I am passionate about building great products and leading teams.",
+  it("rejects letters with too few words", () => {
+    // 800+ chars but under 120 words: long words padded to hit char minimum
+    const fewWords = [
+      "Supercalifragilistic ".repeat(40),
       "",
-      "My background spans product management and engineering leadership with strong results.",
+      "Antidisestablishmentarianism ".repeat(20),
     ].join("\n");
-    // Pad to meet minimum length
-    const padded = letterWithBanned + "\n\n" + "Additional context. ".repeat(10);
-    const result = validateCoverLetter(padded);
+    const result = validateCoverLetter(fewWords);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.stringContaining("too few words")]),
+    );
+  });
+
+  it("rejects letters with too many words", () => {
+    // 230+ words (well over 220 limit)
+    const manyWords = ["word ".repeat(80), "", "more ".repeat(80), "", "extra ".repeat(80)].join(
+      "\n",
+    );
+    const result = validateCoverLetter(manyWords);
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([expect.stringContaining("too many words")]),
+    );
+  });
+
+  it("rejects letters with banned phrases", () => {
+    const letterWithBanned = makeGoodLetter().replace(
+      "At Levee,",
+      "At Levee, I am passionate about",
+    );
+    const result = validateCoverLetter(letterWithBanned);
     expect(result.valid).toBe(false);
     expect(result.reason).toContain("banned phrase");
     expect(result.reason).toContain("passionate");
+  });
+
+  it("rejects exclamation points", () => {
+    const direct = makeGoodLetter().replace(
+      "next step.",
+      "next step. Count me in for this opportunity. Results speak for themselves.",
+    );
+    const directBang = direct.replace("themselves.", "themselves. This would be amazing!");
+    const r3 = validateCoverLetter(directBang);
+    expect(r3.valid).toBe(false);
+    expect(r3.issues).toEqual(expect.arrayContaining([expect.stringContaining("banned phrase")]));
   });
 
   it("detects all banned patterns", () => {
@@ -74,44 +112,54 @@ describe("validateCoverLetter", () => {
       "I am writing to",
       "I am applying",
       "I am confident",
-      "excited to",
+      "excited",
       "passionate",
       "thrilled",
       "leverage",
       "synergy",
       "cutting-edge",
-      "innovative leader",
+      "innovative",
       "game-changer",
       "I'm proud",
       "proud to bring",
       "aligns perfectly",
+      "aligns with",
       "perfect fit",
       "great fit",
       "world-class",
       "dynamic",
       "delighted",
       "as a seasoned",
+      "love",
+      "I believe",
+      "I feel",
+      "I think",
+      "rockstar",
+      "guru",
+      "reach out",
+      "hit the ground running",
+      "move the needle",
+      "disruptive",
+      "thought leader",
+      "feel free",
+      "circle back",
     ];
 
     for (const word of bannedWords) {
-      // Build a letter that meets length and structure requirements
-      const letter = [
-        `I ${word} in product management and have led teams across multiple organizations.`,
-        "",
-        "Second paragraph with additional context about my experience and skills in this domain.",
-        "",
-        "Third paragraph closing the letter with further details about availability and interest.",
-      ].join("\n");
-      const padded =
-        letter.length < MIN_CL_LENGTH ? letter + " Additional detail.".repeat(5) : letter;
-      const result = validateCoverLetter(padded);
+      // Inject the banned word into a good letter
+      const letter = makeGoodLetter().replace("At Levee,", `Testing ${word} detection at Levee,`);
+      const result = validateCoverLetter(letter);
       expect(result.valid, `"${word}" should be caught`).toBe(false);
     }
   });
 
   it("checks paragraph structure (needs 2+ paragraphs)", () => {
-    // Single long paragraph with no breaks
-    const singleParagraph = "I have extensive experience in product management. ".repeat(15);
+    // Single long paragraph with no breaks — build one that meets char+word minimums
+    const words = [];
+    for (let i = 0; i < 150; i++) {
+      words.push("experience");
+    }
+    const singleParagraph = words.join(" ");
     const result = validateCoverLetter(singleParagraph);
     expect(result.valid).toBe(false);
     expect(result.issues).toBeDefined();
@@ -127,26 +175,31 @@ describe("validateCoverLetter", () => {
   });
 
   it("respects length boundaries exactly", () => {
-    // Exactly MIN_CL_LENGTH with two paragraphs
+    // Build a letter at exactly MIN_CL_LENGTH chars with enough words and structure
     const buildLetterOfLength = (targetLen: number) => {
-      const p1 = "First paragraph content. ";
-      const p2 = "\n\nSecond paragraph content. ";
+      const p1 =
+        "First paragraph content with enough words to count toward the minimum requirement. ";
+      const p2 =
+        "\n\nSecond paragraph also has enough content and words to satisfy word count minimums here. ";
       const base = p1 + p2;
       const remaining = targetLen - base.length;
       if (remaining <= 0) {
         return base.slice(0, targetLen);
       }
-      return p1 + "x".repeat(remaining) + p2;
+      // Use real words to avoid word count issues
+      const filler = "additional context words here that count toward minimums and provide filler ";
+      const fillerRepeat = filler.repeat(Math.ceil(remaining / filler.length)).slice(0, remaining);
+      return p1 + fillerRepeat + p2;
     };
 
     const atMin = buildLetterOfLength(MIN_CL_LENGTH);
     expect(atMin.length).toBe(MIN_CL_LENGTH);
-    // May or may not be valid depending on structure, but should not fail on length
+    // Should not fail on char length (may fail on word count though)
     const result = validateCoverLetter(atMin);
-    const lengthIssues = (result.issues || []).filter(
-      (i: string) => i.includes("short") || i.includes("long"),
+    const charLengthIssues = (result.issues || []).filter(
+      (i: string) => i.includes("too short") && i.includes("chars"),
     );
-    expect(lengthIssues.length).toBe(0);
+    expect(charLengthIssues.length).toBe(0);
   });
 });
 
@@ -154,11 +207,11 @@ describe("validateCoverLetter", () => {
 
 describe("validateCoverLetterForJob", () => {
   const goodLetter = [
-    "At Levee, I built a computer vision system achieving 92%+ accuracy for Stripe's ML Foundations team.",
+    "At Levee, building a computer vision system that achieved 92% accuracy across 605 rooms reduced inspection time by 60%, earning recognition at HITEC and PhocusWire. That experience leading a zero-to-one AI product from prototype to production directly applies to the Product Manager role at Stripe.",
     "",
-    "The Product Manager role at Stripe requires deep ML expertise. I managed a $250M portfolio at Chamberlain Group, turning Ring partnership from -11% to +68% IRR.",
+    "Before Levee, managing a $250M smart-home portfolio at Chamberlain Group involved turning the Ring partnership from -11% to +68% IRR. Leading cross-functional teams of engineers and data scientists across Stripe product lines built the operational muscle needed for the ML Foundations team.",
     "",
-    "I would welcome the chance to discuss how my experience maps to the Product Manager, ML Foundations role at Stripe.",
+    "The opportunity to bring both zero-to-one building experience and scaled product management to Stripe is compelling. A conversation about how these experiences map to the Product Manager, ML Foundations roadmap would be a welcome next step.",
   ].join("\n");
 
   it("accepts a letter that mentions company and role", () => {
@@ -191,13 +244,29 @@ describe("validateCoverLetterForJob", () => {
   });
 
   it("rejects a letter that opens with a number", () => {
-    const numStart =
-      "92%+ accuracy achieved on a CV system.\n\nSecond paragraph with enough content to meet length requirements for the validation check.\n\nThird paragraph also present.";
-    const padded = numStart + " More details.".repeat(5);
-    const result = validateCoverLetterForJob(padded, "Acme", "PM");
+    const numStart = makeGoodLetter().replace("At Levee,", "92%+ accuracy achieved at Levee,");
+    const result = validateCoverLetterForJob(numStart, "Acme", "PM");
     expect(result.issues).toEqual(
       expect.arrayContaining([expect.stringContaining("opens with a number")]),
     );
+  });
+
+  it("rejects a letter ending with bare sign-off", () => {
+    const withSignoff = goodLetter + "\n\nSincerely,\nJane Doe";
+    const result = validateCoverLetterForJob(
+      withSignoff,
+      "Stripe",
+      "Product Manager, ML Foundations",
+    );
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([expect.stringContaining("sign-off")]));
+  });
+
+  it("rejects a letter ending with bare name", () => {
+    const withName = goodLetter + "\n\nJane Doe";
+    const result = validateCoverLetterForJob(withName, "Stripe", "Product Manager, ML Foundations");
+    expect(result.valid).toBe(false);
+    expect(result.issues).toEqual(expect.arrayContaining([expect.stringContaining("sign-off")]));
   });
 
   it("also catches base validation issues (banned words, length)", () => {
@@ -334,27 +403,19 @@ describe("validateApplication", () => {
     );
   });
 
-  it("flags applied without cover letter", () => {
+  it("accepts applied without cover letter (cover letters are optional)", () => {
     const result = validateApplication({ status: "applied" });
-    expect(result.issues).toContain("applied without cover letter");
+    expect(result.issues).not.toContain("applied without cover letter");
   });
 
   it("accepts applied with a good cover letter", () => {
-    const goodLetter = [
-      "First paragraph of cover letter with relevant experience details and context.",
-      "",
-      "Second paragraph discussing specific skills and achievements in the relevant domain.",
-    ].join("\n");
-    const padded = goodLetter + " More details.".repeat(8);
-
     const result = validateApplication({
       status: "applied",
-      cover_letter: padded,
+      cover_letter: makeGoodLetter(),
       match_score: 75,
       priority: 2,
     });
-    // May have cover letter structure issues but should not have "applied without cover letter"
-    expect(result.issues).not.toContain("applied without cover letter");
+    expect(result.valid).toBe(true);
   });
 
   it("flags out-of-range match_score", () => {
@@ -498,13 +559,13 @@ describe("checkUrlLiveness", () => {
 
 describe("validation constants", () => {
   it("has sensible length bounds", () => {
-    expect(MIN_CL_LENGTH).toBe(200);
-    expect(MAX_CL_LENGTH).toBe(1100);
+    expect(MIN_CL_LENGTH).toBe(800);
+    expect(MAX_CL_LENGTH).toBe(1400);
     expect(MIN_CL_LENGTH).toBeLessThan(MAX_CL_LENGTH);
   });
 
-  it("has at least 21 banned patterns", () => {
-    expect(BANNED_PATTERNS.length).toBeGreaterThanOrEqual(21);
+  it("has at least 37 banned patterns", () => {
+    expect(BANNED_PATTERNS.length).toBeGreaterThanOrEqual(37);
   });
 
   it("banned patterns are all RegExp instances", () => {

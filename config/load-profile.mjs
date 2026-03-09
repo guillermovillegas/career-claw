@@ -96,34 +96,44 @@ export function getCoverLetterConfig() {
 
 /**
  * Build a cover letter prompt for LLM generation.
- * Used by direct-apply.mjs.
+ * Randomly selects 3 of 5 background bullets to force varied proof points across letters.
+ * Used by direct-apply.mjs and fix-cover-letters.mjs.
  */
 export function buildCoverLetterPrompt(title, company, mode) {
   const cl = getCoverLetterConfig();
+
+  // Shuffle and pick 3 of 5 bullets for variety across letters
+  const bullets = (cl.backgroundText || "").split("\n").filter((b) => b.trim());
+  const shuffled = bullets.toSorted(() => Math.random() - 0.5);
+  const selected = shuffled.slice(0, Math.min(3, shuffled.length)).join("\n");
+
   return `Write a cover letter (150-200 words) for ${cl.fullName} applying to: ${title} at ${company} (${mode}).
 
-STRUCTURE — three paragraphs:
+STRUCTURE — three paragraphs, 150-200 words total:
 
-Paragraph 1 (3-4 sentences): Open with a direct statement connecting his strongest relevant achievement to the ${title} role at ${company}. Name "${company}" and the role title. Lead with the most relevant proof point from the background below — use exact numbers. Explain WHY this experience matters for this specific role.
+Paragraph 1 (4-5 sentences): Connect the most relevant achievement to the ${title} role at ${company}. Do NOT start with "I" as the first word. Lead with a fact, metric, or outcome. Name "${company}" at least once. Use exact numbers from the background below.
 
-Paragraph 2 (3-4 sentences): A second, different proof point that shows range. If paragraph 1 used AI/ML experience, use the business/portfolio experience here (or vice versa). Connect it to what a ${title} would need to do.
+Paragraph 2 (4-5 sentences): A second, different proof point that shows range. Use at least 2 different metrics/numbers. If paragraph 1 used AI/ML experience, use business/portfolio here (or vice versa). Connect it to what a ${title} at ${company} would need.
 
-Paragraph 3 (1-2 sentences): A forward-looking close. Reference the ${title} role at ${company} by name. End with interest in discussing further. Then "${cl.fullName}" alone on the final line.
+Paragraph 3 (2-3 sentences): Forward-looking close. Reference ${company} by name again. End the letter with the last sentence — NO signature, NO name, NO sign-off after the final sentence.
 
-BACKGROUND (use these facts — pick the most relevant for THIS role):
-${cl.backgroundText}
+BACKGROUND (use ONLY these facts — pick the most relevant for THIS role):
+${selected}
 
-ROLE-MATCHING GUIDE (which facts to lead with per role type):
+ROLE-MATCHING GUIDE:
 ${cl.roleGuideText}
 
 STRICT RULES — violating ANY makes the output unusable:
-1. You MUST mention "${company}" by name at least once in the letter.
-2. You MUST reference the "${title}" role specifically, not just generic "product management".
-3. Do NOT invent facts about ${company}. You know nothing about what they do. Only reference the role title and company name.
-4. Do NOT start with any greeting or filler opener. No "Dear", "To Whom", "I am writing", "I am applying", "As a seasoned". Start with a concrete fact or achievement.
-5. NEVER use these banned words/phrases: ${cl.bannedWords}
-6. Write in first person. Direct tone. Varied sentence length. No fluff.
-7. Output ONLY the letter text. No markdown, no quotes, no preamble, no labels.
-8. The letter MUST be 150-200 words. Shorter is unusable.
-9. Do NOT end paragraphs or the letter with just a name. The name goes ONLY on the very last line after the closing paragraph.`;
+1. "${company}" MUST appear at least 2 times in the letter.
+2. Reference the "${title}" role specifically, not just generic "product management".
+3. Do NOT invent facts about ${company}. You know nothing about what they do.
+4. Do NOT start with "I" as the very first word. Start with a fact, metric, or context.
+5. Do NOT use "As a seasoned" or any synonym ("As an experienced", "As a veteran", etc.).
+6. NEVER use these banned words/phrases: ${cl.bannedWords}
+7. No exclamation points anywhere in the letter.
+8. The letter ends with the last sentence of paragraph 3. NO signature line. NO "Sincerely". NO "${cl.fullName}" at the end. Just the sentence, then stop.
+9. Use 2+ different concrete metrics (percentages, dollar amounts, team sizes, etc.).
+10. Write in first person. Direct tone. Varied sentence length. No fluff.
+11. Output ONLY the letter text. No markdown, no quotes, no preamble, no labels.
+12. The letter MUST be 150-200 words. Count carefully. Shorter or longer is unusable.`;
 }

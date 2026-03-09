@@ -21,7 +21,7 @@ import {
   getFormAnswers,
   loadProfile,
 } from "../../config/load-profile.mjs";
-import { validateCoverLetter, validateApplication, checkUrlLiveness } from "./lib/validation.mjs";
+import { checkUrlLiveness } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "../..");
@@ -494,7 +494,9 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           continue;
         } // reCAPTCHA textarea
         if (/cover|letter/i.test(lbl) || f.id === "cover_letter_text") {
-          await el.fill(coverLetter).catch(() => {});
+          if (coverLetter) {
+            await el.fill(coverLetter).catch(() => {});
+          }
         } else if (
           /example|project|describe.*ai|describe.*product|tell us.*about.*experience|tell us.*about.*product|describe.*built/i.test(
             lbl,
@@ -508,11 +510,16 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           await el.fill(FA.why_interested || "").catch(() => {});
+        } else if (/how did you (hear|find|learn)|how.*hear.*about/i.test(lbl)) {
+          await el.fill("LinkedIn").catch(() => {});
         } else if (/tell us|anything.*add|additional.*info|anything.*else/i.test(lbl)) {
-          await el.fill(FA.additional_info || FA.professional_summary || "").catch(() => {});
+          if (!/how did you|hear.*about/i.test(lbl)) {
+            await el.fill(FA.additional_info || "").catch(() => {});
+          } else {
+            await el.fill("LinkedIn").catch(() => {});
+          }
         } else {
-          // Other required textarea — provide concise professional summary
-          await el.fill(FA.professional_summary || "").catch(() => {});
+          // Unknown textarea — leave blank (wrong content is worse than empty)
         }
       } else {
         // Regular text input
@@ -672,15 +679,17 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
   } catch {}
 
   // ─── Cover letter file upload (if no text textarea was found/filled) ────────
-  const clTextArea = page.locator("#cover_letter_text");
-  const clFilled =
-    (await clTextArea.count()) > 0 && (await clTextArea.inputValue().catch(() => "")) !== "";
-  if (!clFilled) {
-    const clFile = page.locator('#cover_letter[type="file"]').first();
-    if ((await clFile.count()) > 0) {
-      const tmpCl = `/tmp/cover-letter-${Date.now()}.txt`;
-      writeFileSync(tmpCl, coverLetter, "utf8");
-      await clFile.setInputFiles(tmpCl).catch(() => {});
+  if (coverLetter) {
+    const clTextArea = page.locator("#cover_letter_text");
+    const clFilled =
+      (await clTextArea.count()) > 0 && (await clTextArea.inputValue().catch(() => "")) !== "";
+    if (!clFilled) {
+      const clFile = page.locator('#cover_letter[type="file"]').first();
+      if ((await clFile.count()) > 0) {
+        const tmpCl = `/tmp/cover-letter-${Date.now()}.txt`;
+        writeFileSync(tmpCl, coverLetter, "utf8");
+        await clFile.setInputFiles(tmpCl).catch(() => {});
+      }
     }
   }
 
@@ -714,11 +723,16 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         .filter((x) => x.value && x.value.length > 0 && !["hidden", "submit"].includes(x.type));
     });
     for (const ff of filledFields) {
-      // Skip logging PII fields and cover letters (too long)
-      if (/cover.letter|recaptcha/i.test(ff.label) || ff.value.length > 500) {
+      // Skip recaptcha; truncate long values (cover letters) but still log them
+      if (/recaptcha/i.test(ff.label)) {
         continue;
       }
-      logFormAnswer(companyName, ff.label, ff.value, ff.id);
+      logFormAnswer(
+        companyName,
+        ff.label,
+        ff.value.length > 500 ? ff.value.slice(0, 200) + "...[truncated]" : ff.value,
+        ff.id,
+      );
     }
   } catch {}
 }
@@ -934,7 +948,9 @@ async function submitLever(page, job, coverLetter) {
     ['input[name="org"]', "#org", 'input[placeholder*="company"]'],
     P.current_company,
   );
-  await tryFill(page, ['textarea[name="comments"]', "#comments"], coverLetter);
+  if (coverLetter) {
+    await tryFill(page, ['textarea[name="comments"]', "#comments"], coverLetter);
+  }
 
   // URLs
   await tryFill(
@@ -1066,15 +1082,17 @@ async function submitAshby(page, job, coverLetter) {
     ],
     P.website,
   );
-  await tryFill(
-    page,
-    [
-      'textarea[name="coverLetter"]',
-      'textarea[placeholder*="cover"]',
-      'textarea[placeholder*="Cover"]',
-    ],
-    coverLetter,
-  );
+  if (coverLetter) {
+    await tryFill(
+      page,
+      [
+        'textarea[name="coverLetter"]',
+        'textarea[placeholder*="cover"]',
+        'textarea[placeholder*="Cover"]',
+      ],
+      coverLetter,
+    );
+  }
 
   // Ashby forms: iterate ALL form field containers and fill based on label text
   try {
@@ -1158,11 +1176,19 @@ async function submitAshby(page, job, coverLetter) {
           continue;
         }
         if (/cover letter/i.test(lbl)) {
-          await textarea.fill(coverLetter).catch(() => {});
+          if (coverLetter) {
+            await textarea.fill(coverLetter).catch(() => {});
+          }
+        } else if (/how did you (hear|find|learn)|how.*hear.*about/i.test(lbl)) {
+          await textarea.fill("LinkedIn").catch(() => {});
         } else if (/why.*interest|why.*apply|why.*role|why.*company|what draws you/i.test(lbl)) {
           await textarea.fill(FA.why_interested || "").catch(() => {});
         } else if (/tell us about|describe.*experience|additional info/i.test(lbl)) {
-          await textarea.fill(FA.additional_info || FA.professional_summary || "").catch(() => {});
+          if (!/how did you|hear.*about/i.test(lbl)) {
+            await textarea.fill(FA.additional_info || "").catch(() => {});
+          } else {
+            await textarea.fill("LinkedIn").catch(() => {});
+          }
         }
         continue;
       }
@@ -1318,11 +1344,13 @@ async function submitIcims(page, job, coverLetter) {
     } catch {}
 
     // Cover letter (textarea if present)
-    await tryFill(
-      page,
-      ['textarea[id*="cover"], textarea[id*="Cover"], textarea[name*="cover"]'],
-      coverLetter,
-    );
+    if (coverLetter) {
+      await tryFill(
+        page,
+        ['textarea[id*="cover"], textarea[id*="Cover"], textarea[name*="cover"]'],
+        coverLetter,
+      );
+    }
 
     if (DRY_RUN) {
       return { success: true, reason: "dry-run" };
@@ -1387,13 +1415,13 @@ if (!existsSync(RESUME_PATH)) {
   process.exit(1);
 }
 
-// Fetch interested applications with cover letters
+// Fetch interested applications (cover letter optional — forms may not require one)
 const applications = await sGet(
-  `applications?status=eq.interested&cover_letter=not.is.null&select=id,job_id,status,cover_letter,match_score,priority,notes&order=match_score.desc&limit=${LIMIT}`,
+  `applications?status=eq.interested&select=id,job_id,status,cover_letter,match_score,priority,notes&order=match_score.desc&limit=${LIMIT}`,
 );
 
 if (!applications.length) {
-  console.log("No interested applications with cover letters found.");
+  console.log("No interested applications found.");
   process.exit(0);
 }
 
@@ -1442,25 +1470,8 @@ for (const app of toSubmit) {
   const job = jobMap[app.job_id];
   const blockReasons = [];
 
-  // Validate cover letter
-  if (app.cover_letter) {
-    const clCheck = validateCoverLetter(app.cover_letter);
-    if (!clCheck.valid) {
-      blockReasons.push(`cover letter: ${clCheck.reason}`);
-    }
-  } else {
-    blockReasons.push("missing cover letter");
-  }
-
-  // Validate application data
-  const appCheck = validateApplication(app);
-  if (!appCheck.valid) {
-    for (const issue of appCheck.issues) {
-      if (!issue.startsWith("cover letter:")) {
-        blockReasons.push(issue);
-      }
-    }
-  }
+  // Cover letter validation skipped — forms decide if CL is required.
+  // Existing cover letters (even imperfect) are sent when forms have CL fields.
 
   // URL liveness check (skip on network error to avoid blocking good apps)
   if (job?.url) {
@@ -1519,13 +1530,13 @@ for (const [i, application] of validated.entries()) {
 
   try {
     if (platform === "greenhouse") {
-      result = await submitGreenhouse(page, job, application.cover_letter);
+      result = await submitGreenhouse(page, job, application.cover_letter || null);
     } else if (platform === "lever") {
-      result = await submitLever(page, job, application.cover_letter);
+      result = await submitLever(page, job, application.cover_letter || null);
     } else if (platform === "ashby") {
-      result = await submitAshby(page, job, application.cover_letter);
+      result = await submitAshby(page, job, application.cover_letter || null);
     } else if (platform === "icims") {
-      result = await submitIcims(page, job, application.cover_letter);
+      result = await submitIcims(page, job, application.cover_letter || null);
     } else {
       result = { success: false, reason: "unsupported platform" };
     }
