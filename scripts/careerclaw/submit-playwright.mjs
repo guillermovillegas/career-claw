@@ -741,11 +741,26 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
 async function submitGreenhouse(page, job, coverLetter) {
   await page.goto(job.url, { waitUntil: "domcontentloaded", timeout: 30000 });
 
+  // Detect redirect to generic careers page (job may be expired)
+  const finalUrl = page.url();
+  if (
+    finalUrl !== job.url &&
+    !finalUrl.includes("gh_jid") &&
+    !finalUrl.includes("greenhouse") &&
+    /careers?\/?$|open-positions|all-jobs/i.test(finalUrl)
+  ) {
+    return {
+      success: false,
+      reason: `Redirected to generic careers page: ${finalUrl.substring(0, 100)}`,
+    };
+  }
+
   // Click Apply button (form may load dynamically on same page)
   const applyBtn = page
     .locator(
       [
         'a:has-text("Apply for this job")',
+        'a:has-text("Apply for this role")',
         'a:has-text("Apply Now")',
         'a:has-text("Apply")',
         'button:has-text("Apply")',
@@ -759,16 +774,32 @@ async function submitGreenhouse(page, job, coverLetter) {
     await applyBtn.click();
   } catch {}
 
+  // Check if Greenhouse form is embedded in an iframe (common for custom career pages)
+  // If so, operate on the iframe context instead of the main page.
+  let formCtx = page; // default: form is on main page
+  await page.waitForTimeout(2000);
+  const ghIframe = page.locator('iframe#grnhse_iframe, iframe[src*="greenhouse.io/embed/job_app"]');
+  if ((await ghIframe.count()) > 0) {
+    const ghFrame = page.frames().find((f) => f.url().includes("greenhouse.io/embed/job_app"));
+    if (ghFrame) {
+      console.log("    [iframe] Greenhouse form in iframe — switching context");
+      formCtx = ghFrame;
+    }
+  }
+
   // Wait for form to render (React-rendered forms appear after click)
   try {
-    await page.locator('#first_name, input[id*="first_name"]').first().waitFor({ timeout: 10000 });
+    await formCtx
+      .locator('#first_name, input[id*="first_name"]')
+      .first()
+      .waitFor({ timeout: 10000 });
   } catch {
     await page.waitForTimeout(2000);
   }
   await page.waitForTimeout(500);
 
   // Fill all form fields generically (handles React Select + native inputs)
-  await fillGhForm(page, coverLetter, job.company || "unknown");
+  await fillGhForm(formCtx, coverLetter, job.company || "unknown");
 
   if (DRY_RUN) {
     return { success: true, reason: "dry-run" };
@@ -778,8 +809,8 @@ async function submitGreenhouse(page, job, coverLetter) {
   // so fetchGhVerificationCode only finds the fresh code for this submission.
   await clearStaleGhCodes();
 
-  // Submit
-  const submitBtn = page
+  // Submit (use formCtx which may be an iframe)
+  const submitBtn = formCtx
     .locator(
       [
         'button[type="submit"]',
@@ -802,7 +833,15 @@ async function submitGreenhouse(page, job, coverLetter) {
       ),
     ]).catch(() => page.waitForTimeout(5000));
 
-    const bodyText = await page.textContent("body");
+    // Read body from both page and formCtx (iframe may have confirmation)
+    let bodyText = await page.textContent("body").catch(() => "");
+    if (formCtx !== page) {
+      const frameText = await formCtx
+        .locator("body")
+        .textContent()
+        .catch(() => "");
+      bodyText += " " + frameText;
+    }
     if (
       /thank you|thanks for applying|application received|successfully submitted|we.ll be in touch|application submitted|we received your/i.test(
         bodyText,
@@ -818,7 +857,9 @@ async function submitGreenhouse(page, job, coverLetter) {
       await page.screenshot({ path: verifyScreenPath, fullPage: false }).catch(() => {});
 
       // Log all visible inputs to find the code input selector
-      const verifyInputs = await page
+      // Use formCtx for verification — code inputs may be in iframe or main page
+      const verifyCtx = formCtx;
+      const verifyInputs = await verifyCtx
         .evaluate(() =>
           Array.from(
             document.querySelectorAll(
@@ -842,12 +883,21 @@ async function submitGreenhouse(page, job, coverLetter) {
       const code = await fetchGhVerificationCode(90000); // 90s — GH emails can be slow
       if (code) {
         // Greenhouse uses 8 individual character inputs: security-input-0 … security-input-7
-        const firstBox = page.locator('[id="security-input-0"]');
+        // Check both page and formCtx (verification may appear in either)
+        let codeCtx = formCtx;
+        const mainHasCode = await page
+          .locator('[id="security-input-0"]')
+          .count()
+          .catch(() => 0);
+        if (mainHasCode > 0) {
+          codeCtx = page;
+        }
+        const firstBox = codeCtx.locator('[id="security-input-0"]');
         try {
           await firstBox.waitFor({ timeout: 5000 });
           // Fill each character into its own box
           for (let i = 0; i < code.length; i++) {
-            await page
+            await codeCtx
               .locator(`[id="security-input-${i}"]`)
               .fill(code[i])
               .catch(() => {});
@@ -855,14 +905,22 @@ async function submitGreenhouse(page, job, coverLetter) {
           }
           await page.waitForTimeout(500);
           // Re-submit
-          const resubmitBtn = page
+          const resubmitBtn = codeCtx
             .locator(
               'button[type="submit"], button:has-text("Submit"), button:has-text("Verify"), button:has-text("Continue")',
             )
             .last();
           await resubmitBtn.click().catch(() => submitBtn.click().catch(() => {}));
           await page.waitForTimeout(8000);
-          const body2 = await page.textContent("body");
+          let body2 = await page.textContent("body").catch(() => "");
+          if (formCtx !== page) {
+            body2 +=
+              " " +
+              (await formCtx
+                .locator("body")
+                .textContent()
+                .catch(() => ""));
+          }
           if (
             /thank you|thanks for applying|application received|successfully submitted|we.ll be in touch|application submitted|we received your/i.test(
               body2,
@@ -894,8 +952,8 @@ async function submitGreenhouse(page, job, coverLetter) {
       // Save screenshot for debugging
       const debugPath = `/tmp/gh-fail-${Date.now()}.png`;
       await page.screenshot({ path: debugPath, fullPage: false }).catch(() => {});
-      // Get specific error messages + their field labels
-      const errDetails = await page
+      // Get specific error messages + their field labels (check formCtx for iframe forms)
+      const errDetails = await formCtx
         .evaluate(() => {
           const results = [];
           document
