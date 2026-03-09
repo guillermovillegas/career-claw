@@ -429,6 +429,9 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         ) {
           await pickReactSelect(page, el, {
             matchFn: (t) => /^yes\b/i.test(t.trim()),
+          }).catch(async () => {
+            // Fallback: try native select or search-based approach
+            await el.selectOption?.({ label: "Yes" }).catch(() => {});
           });
         } else if (/sponsor|visa|require.*work.*permit|future.*sponsor|h-?1b/i.test(lbl)) {
           await pickReactSelect(page, el, {
@@ -658,11 +661,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           // AI project / product experience example
           await el.fill(FA.ai_experience || FA.professional_summary || "").catch(() => {});
         } else if (
-          /why.*interest|why.*role|why.*company|why.*want|what.*excites|what.*attracts|motivation/i.test(
+          /why.*interest|why.*role|why.*company|why.*want|what.*excites|what.*attracts|motivation|^why\s+\w+\?/i.test(
             lbl,
           )
         ) {
-          await el.fill(FA.why_interested || "").catch(() => {});
+          // "Why [Company]?" or "Why are you interested?" — use cover letter as essay answer
+          await el.fill(FA.why_interested || coverLetter || "").catch(() => {});
         } else if (
           /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample/i.test(lbl)
         ) {
@@ -689,6 +693,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill(P.last_name).catch(() => {});
         } else if (/preferred.*name/i.test(lbl)) {
           await el.fill(P.first_name).catch(() => {});
+        } else if (/confirm.*email|email.*confirm|verify.*email|re.?enter.*email/i.test(lbl)) {
+          await el.fill(P.email).catch(() => {});
         } else if (/email/i.test(lbl)) {
           await el.fill(P.email).catch(() => {});
         } else if (
@@ -818,6 +824,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill("2 weeks").catch(() => {});
         } else if (/current.*location.*city|where.*based|where.*you.*located/i.test(lbl)) {
           await el.fill("Chicago, IL").catch(() => {});
+        } else if (
+          /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample/i.test(lbl)
+        ) {
+          await el
+            .fill("https://myportfolio.vercel.app | https://github.com/janedoe")
+            .catch(() => {});
         }
         // Unknown text fields: leave blank (non-required will pass)
       }
