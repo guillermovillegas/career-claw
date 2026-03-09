@@ -356,6 +356,10 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           // Convert id like "first_name" → "first name", "preferred_name" → "preferred name"
           label = el.id.replace(/[_-]/g, " ").replace(/\d+/g, "").trim();
         }
+        // Generate synthetic ID for elements without one (embed forms often lack IDs)
+        if (!el.id) {
+          el.id = `_cc_auto_${Math.random().toString(36).slice(2, 8)}`;
+        }
         return {
           id: el.id,
           tag: el.tagName.toLowerCase(),
@@ -600,6 +604,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           }).catch(async () => {
             await el.selectOption?.({ label: "Yes" }).catch(() => {});
           });
+        } else if (/privacy.*policy|applicant.*privacy|data.*policy/i.test(lbl)) {
+          // Privacy policy — accept/agree
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /i agree|i accept|agree|accept|yes|acknowledge/i.test(t.trim()),
+          }).catch(async () => {
+            await el.selectOption?.({ label: "I agree" }).catch(() => {});
+          });
         } else if (lbl) {
           // Unknown required React Select — open and pick first non-empty option
           await pickReactSelect(page, el, {}).catch(() => {});
@@ -626,6 +637,15 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el
             .selectOption({ label: "Yes" })
             .catch(() => el.selectOption({ index: 1 }).catch(() => {}));
+        } else if (/privacy.*policy|applicant.*privacy|data.*policy/i.test(lbl)) {
+          // Privacy policy acceptance — select "I agree" or "Yes" or first real option
+          const opts = await el.locator("option").allTextContents();
+          const agree = opts.find((o) => /i agree|i accept|agree|accept|yes|acknowledge/i.test(o));
+          if (agree) {
+            await el.selectOption({ label: agree }).catch(() => {});
+          } else if (opts.length > 1) {
+            await el.selectOption({ index: 1 }).catch(() => {});
+          }
         } else if (/describes you|applicant type|type of applicant/i.test(lbl)) {
           // Bot detection — skip (don't auto-fill with "AI" option)
           const opts = await el.locator("option").allTextContents();
@@ -649,6 +669,11 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         if (/g-recaptcha/i.test(f.cls)) {
           continue;
         } // reCAPTCHA textarea
+        // Confirm email (Spring Health uses a textarea for this)
+        if (/confirm.*email|email.*confirm|verify.*email|re.?enter.*email/i.test(lbl)) {
+          await el.fill(P.email).catch(() => {});
+          continue;
+        }
         if (/cover|letter/i.test(lbl) || f.id === "cover_letter_text") {
           if (coverLetter) {
             await el.fill(coverLetter).catch(() => {});
