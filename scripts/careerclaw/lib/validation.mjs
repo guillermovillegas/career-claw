@@ -9,7 +9,7 @@ import https from "https";
 // ─── Cover Letter Validation ──────────────────────────────────────────────────
 
 export const MIN_CL_LENGTH = 800;
-export const MAX_CL_LENGTH = 1400;
+export const MAX_CL_LENGTH = 1600;
 
 export const BANNED_PATTERNS = [
   /\bdear\b/i,
@@ -73,8 +73,8 @@ export function validateCoverLetter(letter) {
   if (wordCount < 120) {
     issues.push(`too few words (${wordCount}, need 120+)`);
   }
-  if (wordCount > 220) {
-    issues.push(`too many words (${wordCount}, max 220)`);
+  if (wordCount > 240) {
+    issues.push(`too many words (${wordCount}, max 240)`);
   }
 
   for (const pattern of BANNED_PATTERNS) {

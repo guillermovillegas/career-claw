@@ -39,11 +39,11 @@ const OLLAMA_URL = "http://localhost:11434";
 const OLLAMA_MODEL = "qwen3:8b";
 
 const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 
 // ─── Parse args ──────────────────────────────────────────────────────────────
-let LIMIT = 30;
-let MIN_SCORE = 70;
+let LIMIT = 300;
+let MIN_SCORE = 50;
 let DRY_RUN = false;
 
 for (let i = 2; i < process.argv.length; i++) {
@@ -110,8 +110,8 @@ function sbPost(path, data) {
 // ─── Cover letter generation (loaded from config/profile.json) ──────────────
 // buildCoverLetterPrompt is imported from config/load-profile.mjs
 
-async function generateWithOllama(title, company, mode) {
-  let prompt = buildCoverLetterPrompt(title, company, mode);
+async function generateWithOllama(title, company, mode, feedback = "") {
+  let prompt = buildCoverLetterPrompt(title, company, mode) + feedback;
   // qwen3 defaults to thinking mode — disable it to maximize output tokens
   if (OLLAMA_MODEL.startsWith("qwen3")) {
     prompt = "/nothink\n" + prompt;
@@ -143,8 +143,8 @@ async function generateWithOllama(title, company, mode) {
   }
 }
 
-async function generateWithGemini(title, company, mode) {
-  const prompt = buildCoverLetterPrompt(title, company, mode);
+async function generateWithGemini(title, company, mode, feedback = "") {
+  const prompt = buildCoverLetterPrompt(title, company, mode) + feedback;
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     const res = await request(url, {
@@ -152,7 +152,7 @@ async function generateWithGemini(title, company, mode) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 300, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: 600, temperature: 0.75 },
       }),
     });
     if (res.status !== 200) {
@@ -167,17 +167,186 @@ async function generateWithGemini(title, company, mode) {
   }
 }
 
-// ─── Cover letter validation (imported from lib/validation.mjs) ──────────
+// ─── Rejection-aware quality loop ────────────────────────────────────────────
+
+// Load past rejection data to learn what NOT to do
+let rejectionLessons = "";
+async function loadRejectionLessons() {
+  if (rejectionLessons) {
+    return rejectionLessons;
+  }
+  try {
+    // Fetch rejected applications with their cover letters
+    const rejected = await sbGet(
+      "/rest/v1/applications?status=eq.rejected&select=cover_letter,job_id&limit=20",
+    );
+    if (!rejected?.length) {
+      return "";
+    }
+
+    // Analyze common patterns in rejected letters
+    const patterns = {};
+    const openers = [];
+    for (const r of rejected) {
+      if (!r.cover_letter) {
+        continue;
+      }
+      const cl = r.cover_letter;
+      // Track opening words
+      const firstWords = cl.split(/\s+/).slice(0, 5).join(" ");
+      openers.push(firstWords);
+      // Track overused phrases
+      const phrases = cl.match(/\b[A-Z][a-z]+ [a-z]+ [a-z]+ [a-z]+\b/g) || [];
+      for (const p of phrases) {
+        const key = p.toLowerCase();
+        patterns[key] = (patterns[key] || 0) + 1;
+      }
+    }
+    // Find phrases that appeared in 3+ rejected letters (overused = AI-sounding)
+    const overused = Object.entries(patterns)
+      .filter(([, count]) => count >= 3)
+      .map(([phrase]) => phrase);
+    // Find duplicate openers
+    const openerCounts = {};
+    for (const o of openers) {
+      openerCounts[o] = (openerCounts[o] || 0) + 1;
+    }
+    const repeatedOpeners = Object.entries(openerCounts)
+      .filter(([, c]) => c >= 2)
+      .map(([opener]) => opener);
+
+    const lessons = [];
+    if (overused.length > 0) {
+      lessons.push(
+        `OVERUSED PHRASES IN REJECTED LETTERS (avoid): ${overused.slice(0, 8).join(", ")}`,
+      );
+    }
+    if (repeatedOpeners.length > 0) {
+      lessons.push(
+        `REPEATED OPENERS IN REJECTED LETTERS (use different opening): ${repeatedOpeners.slice(0, 3).join(" | ")}`,
+      );
+    }
+    lessons.push(
+      "REJECTED LETTERS WERE: too generic, too AI-sounding, lacked specific connection to the company, used cookie-cutter structure. Be DIFFERENT.",
+    );
+    rejectionLessons = lessons.join("\n");
+    console.log(`Loaded rejection lessons from ${rejected.length} rejected applications\n`);
+    return rejectionLessons;
+  } catch {
+    return "";
+  }
+}
+
+// Anti-AI-copy: detect and score how "AI-generated" a letter sounds
+function aiCopyScore(letter) {
+  let score = 0;
+  const checks = [
+    [/^(Throughout|Over the course of|In my|With over|Having spent|As a)/i, 2, "generic AI opener"],
+    [/\btrack record\b/i, 1, "cliche: track record"],
+    [/\bwell-positioned\b/i, 1, "cliche: well-positioned"],
+    [/\bunique combination\b/i, 2, "cliche: unique combination"],
+    [/\bI am confident\b/i, 2, "AI: I am confident"],
+    [/\bI would welcome\b/i, 1, "AI: I would welcome"],
+    [/\bI look forward to\b/i, 1, "AI: I look forward to"],
+    [/\bdeeply\b/i, 1, "AI filler: deeply"],
+    [/\bseamlessly\b/i, 1, "AI filler: seamlessly"],
+    [/\brobust\b/i, 1, "AI filler: robust"],
+    [/\bholistic\b/i, 1, "AI filler: holistic"],
+    [/\bpivotal\b/i, 1, "AI filler: pivotal"],
+    [/\bfoster\b/i, 1, "AI filler: foster"],
+    [/\bspearhead/i, 1, "AI filler: spearhead"],
+    [/\bensuring\b/i, 1, "AI filler: ensuring"],
+    [/\bstakeholder\b/i, 1, "AI filler: stakeholder"],
+    [/\bcross-functional\b/i, 1, "AI cliche: cross-functional"],
+  ];
+  const issues = [];
+  for (const [pattern, weight, label] of checks) {
+    if (pattern.test(letter)) {
+      score += weight;
+      issues.push(label);
+    }
+  }
+  // Sentence uniformity check: if most sentences are similar length, it's AI
+  const sentences = letter.split(/[.!?]+/).filter((s) => s.trim().length > 10);
+  if (sentences.length >= 4) {
+    const lengths = sentences.map((s) => s.trim().split(/\s+/).length);
+    const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const variance = lengths.reduce((a, b) => a + (b - avg) ** 2, 0) / lengths.length;
+    if (variance < 4) {
+      score += 2;
+      issues.push("uniform sentence length (robotic)");
+    }
+  }
+  return { score, issues };
+}
+
+// Auto-repair: fix common LLM failures
+function repairLetter(letter) {
+  let fixed = letter
+    .replace(
+      /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Warmly|Cheers|Thank you|Thanks|Respectfully),?\s*\n.*$/is,
+      "",
+    )
+    .replace(/\n\s*Guillermo\s*(Villegas)?\s*$/i, "")
+    .replace(/\baligns with\b/gi, "maps to")
+    .replace(/\binnovative\b/gi, "effective")
+    .replace(/\bexcited\b/gi, "prepared")
+    .replace(/\blove\b/gi, "value")
+    .replace(/\bI believe\b/gi, "My track record shows")
+    .replace(/\bI think\b/gi, "My experience suggests")
+    .replace(/\bI feel\b/gi, "My background demonstrates")
+    .replace(/\bseamlessly\b/gi, "effectively")
+    .replace(/\brobust\b/gi, "strong")
+    .replace(/\bholistic\b/gi, "full")
+    .replace(/\bpivotal\b/gi, "key")
+    .replace(/\bfoster\b/gi, "build")
+    .replace(/\bspearheaded?\b/gi, "led")
+    .replace(/\bensuring\b/gi, "so that")
+    .replace(/\bstakeholders?\b/gi, "teams")
+    .replace(/\bdeeply\b/gi, "")
+    .replace(/!/g, ".")
+    .replace(/\.\./g, ".")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  // Auto-paragraph: if letter is a single block, split at sentence boundaries
+  const paragraphs = fixed.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+  if (paragraphs.length < 2 && fixed.length > 400) {
+    const sentences = fixed.split(/(?<=\.)\s+/);
+    if (sentences.length >= 6) {
+      // Split into 3 paragraphs at roughly 1/3 and 2/3 points
+      const third = Math.floor(sentences.length / 3);
+      const twoThird = Math.floor((sentences.length * 2) / 3);
+      const p1 = sentences.slice(0, third).join(" ");
+      const p2 = sentences.slice(third, twoThird).join(" ");
+      const p3 = sentences.slice(twoThird).join(" ");
+      fixed = [p1, p2, p3].filter((p) => p.trim()).join("\n\n");
+    }
+  }
+
+  return fixed;
+}
 
 async function generateCoverLetter(title, company, mode) {
-  const MAX_ATTEMPTS = 3;
+  const MAX_ATTEMPTS = 5;
+  const lessons = await loadRejectionLessons();
+  let lastIssues = [];
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    // Build feedback from previous attempts for the retry prompt
+    let feedbackSuffix = "";
+    if (lastIssues.length > 0) {
+      feedbackSuffix = `\n\nPREVIOUS ATTEMPT FAILED BECAUSE: ${lastIssues.join("; ")}. Fix these specific problems.`;
+    }
+    if (lessons) {
+      feedbackSuffix += `\n\n${lessons}`;
+    }
+
     // Try Gemini first, then Ollama
-    let letter = await generateWithGemini(title, company, mode);
+    let letter = await generateWithGemini(title, company, mode, feedbackSuffix);
     if (!letter || letter.length < MIN_CL_LENGTH) {
       console.log("  Falling back to Ollama...");
-      letter = await generateWithOllama(title, company, mode);
+      letter = await generateWithOllama(title, company, mode, feedbackSuffix);
     }
 
     if (!letter) {
@@ -186,31 +355,30 @@ async function generateCoverLetter(title, company, mode) {
     }
 
     // Auto-repair common LLM failures before validation
-    letter = letter
-      .replace(
-        /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Warmly|Cheers|Thank you|Thanks|Respectfully),?\s*\n.*$/is,
-        "",
-      )
-      .replace(/\n\s*Guillermo\s*(Villegas)?\s*$/i, "")
-      .replace(/\baligns with\b/gi, "maps to")
-      .replace(/\binnovative\b/gi, "effective")
-      .replace(/\bexcited\b/gi, "prepared")
-      .replace(/\blove\b/gi, "value")
-      .replace(/\bI believe\b/gi, "My track record shows")
-      .replace(/\bI think\b/gi, "My experience suggests")
-      .replace(/\bI feel\b/gi, "My background demonstrates")
-      .replace(/!/g, ".")
-      .trim();
-
+    letter = repairLetter(letter);
     // Context-aware check: company + role mention required
     const check = validateCoverLetterForJob(letter, company, title);
-    if (check.valid) {
+    const aiCheck = aiCopyScore(letter);
+
+    if (check.valid && aiCheck.score <= 3) {
+      if (aiCheck.score > 0) {
+        console.log(`  AI-copy score: ${aiCheck.score}/3 (acceptable)`);
+      }
       return letter;
     }
 
-    console.log(`  Attempt ${attempt}/${MAX_ATTEMPTS}: rejected — ${check.reason}`);
+    // Collect all issues for feedback to next attempt
+    lastIssues = [];
+    if (!check.valid) {
+      lastIssues.push(...(check.issues || [check.reason]));
+    }
+    if (aiCheck.score > 3) {
+      lastIssues.push(`AI-copy score ${aiCheck.score} (${aiCheck.issues.join(", ")})`);
+    }
+
+    console.log(`  Attempt ${attempt}/${MAX_ATTEMPTS}: rejected — ${lastIssues[0]}`);
     if (attempt < MAX_ATTEMPTS) {
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1500)); // rate limit buffer
     }
   }
 
@@ -353,9 +521,9 @@ for (let i = 0; i < candidates.length; i++) {
 
   console.log("");
 
-  // Small pause between jobs
+  // Small pause between jobs (keep under API rate limits)
   if (i < candidates.length - 1) {
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 800));
   }
 }
 

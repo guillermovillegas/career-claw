@@ -40,7 +40,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const OLLAMA_URL = "http://localhost:11434";
 const OLLAMA_MODEL = "qwen3:8b";
 const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
 
 // ─── Parse args ──────────────────────────────────────────────────────────────
 let LIMIT = 200;
@@ -191,8 +191,35 @@ async function generateValidCoverLetter(title, company, mode) {
       .replace(/\bI believe\b/gi, "My track record shows")
       .replace(/\bI think\b/gi, "My experience suggests")
       .replace(/\bI feel\b/gi, "My background demonstrates")
+      .replace(/\bseamlessly\b/gi, "effectively")
+      .replace(/\brobust\b/gi, "strong")
+      .replace(/\bholistic\b/gi, "full")
+      .replace(/\bpivotal\b/gi, "key")
+      .replace(/\bfoster\b/gi, "build")
+      .replace(/\bspearheaded?\b/gi, "led")
+      .replace(/\bensuring\b/gi, "so that")
+      .replace(/\bstakeholders?\b/gi, "teams")
+      .replace(/\bdeeply\b/gi, "")
       .replace(/!/g, ".")
+      .replace(/\.\./g, ".")
+      .replace(/\s{2,}/g, " ")
       .trim();
+    // Auto-paragraph: if single block, split at sentence boundaries
+    const paras = letter.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+    if (paras.length < 2 && letter.length > 400) {
+      const sents = letter.split(/(?<=\.)\s+/);
+      if (sents.length >= 6) {
+        const t = Math.floor(sents.length / 3);
+        const tt = Math.floor((sents.length * 2) / 3);
+        letter = [
+          sents.slice(0, t).join(" "),
+          sents.slice(t, tt).join(" "),
+          sents.slice(tt).join(" "),
+        ]
+          .filter((p) => p.trim())
+          .join("\n\n");
+      }
+    }
     // Context-aware check: company + role mention required
     const check = validateCoverLetterForJob(letter, company, title);
     if (check.valid) {
