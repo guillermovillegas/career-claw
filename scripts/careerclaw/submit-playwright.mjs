@@ -1946,11 +1946,28 @@ async function submitGreenhouse(page, job, coverLetter) {
             }
             // Resolve label — check parent .field for label element
             let label = "";
-            const field = container.closest(".field, .application-field, [class*='question']");
+            const field = container.closest(
+              ".field, .application-field, [class*='question'], .form-group, [data-required]",
+            );
             if (field) {
               const lblEl = field.querySelector("label, legend, .field-label");
               if (lblEl) {
                 label = lblEl.textContent.trim();
+              }
+            }
+            // Try parent element directly (GH EEOC: parent div wraps label + select__container)
+            if (!label && container.parentElement) {
+              const parent = container.parentElement;
+              const pLbl = parent.querySelector("label, legend, .field-label");
+              if (pLbl) {
+                label = pLbl.textContent.trim();
+              }
+              // Also try grandparent
+              if (!label && parent.parentElement) {
+                const gpLbl = parent.parentElement.querySelector("label, legend, .field-label");
+                if (gpLbl) {
+                  label = gpLbl.textContent.trim();
+                }
               }
             }
             // Fallback: look for text content in preceding sibling
@@ -2092,6 +2109,9 @@ async function submitGreenhouse(page, job, coverLetter) {
           } catch {
             // Silently continue to next field
           }
+          // Close any open dropdown before filling next field
+          await formCtx.keyboard.press("Escape").catch(() => {});
+          await formCtx.waitForTimeout(300);
         }
 
         if (fixedCount > 0) {
