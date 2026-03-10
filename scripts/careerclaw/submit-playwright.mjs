@@ -332,17 +332,49 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
       return true;
     }
 
+    // Helper: click option and verify it stuck, fall back to keyboard if not
+    const clickOption = async (opt) => {
+      const optText = ((await opt.textContent()) || "").trim();
+      await opt.scrollIntoViewIfNeeded().catch(() => {});
+      await page.waitForTimeout(50);
+      await opt.click();
+      await page.waitForTimeout(300);
+      // Verify selection stuck by checking for select__single-value or select__placeholder
+      const container = el
+        .locator('xpath=ancestor::*[contains(@class,"select__container")]')
+        .first();
+      const val = await container
+        .locator(".select__single-value")
+        .textContent({ timeout: 1000 })
+        .catch(() => "");
+      if (val && val.trim() === optText) {
+        return true;
+      }
+      // Click didn't register — try keyboard: click input, arrow down to option, Enter
+      const kb = page.keyboard || page.page?.()?.keyboard;
+      if (kb) {
+        await kb.press("Escape").catch(() => {});
+        await page.waitForTimeout(200);
+        await el.click({ timeout: 3000 }).catch(() => {});
+        await page.waitForTimeout(300);
+        // Type first few chars to filter
+        if (optText) {
+          await el.evaluate((node) => {
+            node.value = "";
+          });
+          await el.type(optText.slice(0, 10), { delay: 30 });
+          await page.waitForTimeout(500);
+        }
+        await kb.press("Enter").catch(() => {});
+        await page.waitForTimeout(300);
+      }
+      return true; // best effort
+    };
     if (matchFn) {
       for (let i = 0; i < count; i++) {
         const t = (await opts.nth(i).textContent()) || "";
         if (matchFn(t)) {
-          await opts
-            .nth(i)
-            .scrollIntoViewIfNeeded()
-            .catch(() => {});
-          await page.waitForTimeout(50);
-          await opts.nth(i).click();
-          return true;
+          return await clickOption(opts.nth(i));
         }
       }
     }
@@ -352,8 +384,7 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
       return false;
     }
     // If search was provided but no matchFn, click the first option (most relevant)
-    await opts.first().click();
-    return true;
+    return await clickOption(opts.first());
   } catch {
     return false;
   }
