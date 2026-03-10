@@ -1886,6 +1886,7 @@ async function submitGreenhouse(page, job, coverLetter) {
       const unfilled = await formCtx
         .evaluate(() => {
           const results = [];
+          const seenIds = new Set();
           // Find error indicators and their associated fields
           document
             .querySelectorAll('[id*="-error"], [class*="field-error"], [class*="error-message"]')
@@ -1905,6 +1906,10 @@ async function submitGreenhouse(page, job, coverLetter) {
                 "input:not([type='hidden']):not([type='submit']), textarea, select",
               );
               if (!inp) {
+                return;
+              }
+              // Dedup by element ID
+              if (inp.id && seenIds.has(inp.id)) {
                 return;
               }
               // Get label text — try label element, then visible text in container
@@ -1933,6 +1938,7 @@ async function submitGreenhouse(page, job, coverLetter) {
               if (!inp.id) {
                 inp.id = `_cc_retry_${Math.random().toString(36).slice(2, 8)}`;
               }
+              seenIds.add(inp.id);
               results.push({
                 id: inp.id,
                 label,
@@ -2051,46 +2057,75 @@ async function submitGreenhouse(page, job, coverLetter) {
           console.log(`      → label="${uf.label.slice(0, 80)}" id=${uf.id} rs=${isRS}`);
 
           try {
+            // Helper: try pickReactSelect, log available options on failure
+            const tryPick = async (ctx, elem, opts, fallbackOpts) => {
+              let ok = await pickReactSelect(ctx, elem, opts);
+              if (!ok && fallbackOpts) {
+                await ctx.keyboard.press("Escape").catch(() => {});
+                await ctx.waitForTimeout(200);
+                ok = await pickReactSelect(ctx, elem, fallbackOpts);
+              }
+              if (!ok) {
+                // Log what options are actually available
+                await ctx.keyboard.press("Escape").catch(() => {});
+                await ctx.waitForTimeout(200);
+                await elem.click({ timeout: 3000 }).catch(() => {});
+                await ctx.waitForTimeout(400);
+                const availOpts = await ctx
+                  .locator('[class*="select__option"]')
+                  .evaluateAll((els) => els.map((e) => e.textContent?.trim()).slice(0, 8))
+                  .catch(() => []);
+                if (availOpts.length > 0) {
+                  console.log(`        [debug] Available options: ${JSON.stringify(availOpts)}`);
+                }
+                await ctx.keyboard.press("Escape").catch(() => {});
+                await ctx.waitForTimeout(200);
+                // Last resort: click first option
+                if (availOpts.length > 0) {
+                  ok = await pickReactSelect(ctx, elem, {});
+                }
+              }
+              return ok;
+            };
             if (isRS) {
+              let filled = false;
               // Try to fill React Select based on label
               if (/sexual|transgender/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
-                  matchFn: (t) =>
-                    /decline|prefer not|choose not|not to answer|don.t wish|do not wish|rather not/i.test(
-                      t,
-                    ),
-                }).catch(async () => {
-                  await pickReactSelect(formCtx, el, {}).catch(() => {});
-                });
-                fixedCount++;
+                filled = await tryPick(
+                  formCtx,
+                  el,
+                  {
+                    matchFn: (t) =>
+                      /decline|prefer not|choose not|not to answer|don.t wish|do not wish|rather not/i.test(
+                        t,
+                      ),
+                  },
+                  null,
+                );
               } else if (/country.*resid|currently resid|resid.*country|what country/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
+                filled = await tryPick(formCtx, el, {
                   search: "United States",
                   matchFn: (t) => /^United States\b/i.test(t.trim()),
                 });
-                fixedCount++;
               } else if (/citizenship|citizen.*country|dual.*national/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
+                filled = await tryPick(formCtx, el, {
                   search: "United States",
                   matchFn: (t) => /^United States\b|^US$|^USA$/i.test(t.trim()),
                 });
-                fixedCount++;
               } else if (/arms.*export|itar|export.*control|citizenship.*status/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
-                  matchFn: (t) => /u\.?s\.?\s*citizen|citizen.*united/i.test(t.trim()),
-                }).catch(async () => {
-                  await pickReactSelect(formCtx, el, {
-                    matchFn: (t) => /^yes\b/i.test(t.trim()),
-                  }).catch(() => {});
-                });
-                fixedCount++;
+                filled = await tryPick(
+                  formCtx,
+                  el,
+                  { matchFn: (t) => /u\.?s\.?\s*citizen|citizen.*united/i.test(t.trim()) },
+                  { matchFn: (t) => /^yes\b/i.test(t.trim()) },
+                );
               } else if (/how many years|years of experience|years.*professional/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
-                  matchFn: (t) => /^10\b|^10\+|^10\s*-|8\s*-\s*10|8\+|7\+/i.test(t.trim()),
-                }).catch(async () => {
-                  await pickReactSelect(formCtx, el, { search: "10" }).catch(() => {});
-                });
-                fixedCount++;
+                filled = await tryPick(
+                  formCtx,
+                  el,
+                  { matchFn: (t) => /^10\b|^10\+|^10\s*-|8\s*-\s*10|8\+|7\+/i.test(t.trim()) },
+                  { search: "10" },
+                );
               } else if (
                 /do you have|at least|experience.*in|proficient|coding|python|machine learning|deploying|shipping/i.test(
                   lbl,
@@ -2101,31 +2136,37 @@ async function submitGreenhouse(page, job, coverLetter) {
                   /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production|machine learning.*engineering/i.test(
                     lbl,
                   );
-                await pickReactSelect(formCtx, el, {
+                filled = await tryPick(formCtx, el, {
                   matchFn: (t) => (isCodingQ ? /^no\b/i : /^yes\b/i).test(t.trim()),
                 });
-                fixedCount++;
               } else if (/gender/i.test(lbl) && !/race|ethnicity/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
-                  matchFn: (t) => /^male$|^man$/i.test(t.trim()),
-                }).catch(async () => {
-                  await pickReactSelect(formCtx, el, {
-                    matchFn: (t) => /decline|prefer not/i.test(t),
-                  }).catch(() => {});
-                });
-                fixedCount++;
+                filled = await tryPick(
+                  formCtx,
+                  el,
+                  { matchFn: (t) => /^male$|^man$/i.test(t.trim()) },
+                  { matchFn: (t) => /decline|prefer not/i.test(t) },
+                );
               } else if (/hear about|referral|how.*find|source/i.test(lbl)) {
-                await pickReactSelect(formCtx, el, {
+                filled = await tryPick(formCtx, el, {
                   matchFn: (t) => /linkedin|job board|website/i.test(t),
                 });
-                fixedCount++;
-              } else {
-                // Unknown React Select — try "No" then "Yes" then first option
-                await pickReactSelect(formCtx, el, {
-                  matchFn: (t) => /^no\b|^n\/a\b|decline|prefer not/i.test(t.trim()),
-                }).catch(async () => {
-                  await pickReactSelect(formCtx, el, {}).catch(() => {});
+              } else if (/sponsor|h.?1.?b|visa/i.test(lbl)) {
+                // "Will you require sponsorship?" → No. "Are you authorized?" → Yes
+                const needsNo = /require|need|sponsor/i.test(lbl);
+                filled = await tryPick(formCtx, el, {
+                  matchFn: (t) => (needsNo ? /^no\b/i : /^yes\b/i).test(t.trim()),
                 });
+              } else if (/work auth|authorized.*work|legally.*work|eligible.*work/i.test(lbl)) {
+                filled = await tryPick(formCtx, el, {
+                  matchFn: (t) => /^yes\b/i.test(t.trim()),
+                });
+              } else {
+                // Unknown React Select — try "No" then first option
+                filled = await tryPick(formCtx, el, {
+                  matchFn: (t) => /^no\b|^n\/a\b|decline|prefer not/i.test(t.trim()),
+                });
+              }
+              if (filled) {
                 fixedCount++;
               }
             } else if (uf.tag === "textarea") {
@@ -2138,6 +2179,16 @@ async function submitGreenhouse(page, job, coverLetter) {
               if (/time\s*zone|timezone/i.test(lbl)) {
                 await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
                 fixedCount++;
+              } else if (/linkedin\s*profile|linkedin\s*url|linkedin/i.test(lbl)) {
+                await el.fill(FA.linkedin_url || "").catch(() => {});
+                if (FA.linkedin_url) {
+                  fixedCount++;
+                }
+              } else if (/website|portfolio|personal.*url|personal.*site/i.test(lbl)) {
+                await el.fill(FA.linkedin_url || "").catch(() => {});
+                if (FA.linkedin_url) {
+                  fixedCount++;
+                }
               }
             }
           } catch {
