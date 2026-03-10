@@ -243,6 +243,7 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
     }
 
     // Select__option is unique to React Select (phone ITI uses iti__country)
+    // Use page-wide locator — React Select renders dropdown as a portal to body
     let opts = page.locator('[class*="select__option"]:not([class*="selected"])');
     let count = await opts.count();
 
@@ -264,9 +265,13 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
       if ((await control.count()) > 0) {
         await control.click();
         await page.waitForTimeout(500);
-        // Get options from within this select's menu
-        const menuOpts = container.locator('[class*="select__option"]');
+        // Get options from within this select's menu (or page-wide for portals)
+        let menuOpts = container.locator('[class*="select__option"]');
         count = await menuOpts.count();
+        if (!count) {
+          menuOpts = page.locator('[class*="select__option"]');
+          count = await menuOpts.count();
+        }
         if (count > 0) {
           opts = menuOpts;
         }
@@ -294,6 +299,11 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
           return true;
         }
       }
+    }
+    // If matchFn was provided but no option matched, don't blindly click first option
+    // (could select "No" for authorization or "Yes" for sponsorship)
+    if (matchFn) {
+      return false;
     }
     // If search was provided but no matchFn, click the first option (most relevant)
     await opts.first().click();
@@ -411,6 +421,18 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           if (!checked) {
             await el.check().catch(() => {});
           }
+        } else if (/^remote$/i.test(lbl.trim())) {
+          // Location preference checkboxes — always check "Remote"
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
+        } else if (/never held a clearance|no clearance|none.*clearance/i.test(lbl.trim())) {
+          // Security clearance checkbox groups — check "Never held a clearance"
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
         }
         continue;
       }
@@ -420,19 +442,37 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
 
       if (isReactSelect) {
         // ─── React Select dropdowns ───────────────────────────────────────────
-        if (/country/i.test(lbl) && !/country.*cuba|ofac/i.test(lbl)) {
-          await pickReactSelect(page, el, {
-            matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
-          });
-        } else if (/location.*city|city.*location/i.test(lbl)) {
-          await pickReactSelect(page, el, { search: "Chicago" });
-        } else if (
-          /authoriz|legally.*(work|employ)|legal.*authoriz|eligible.*work|work.*authoriz|currently.*legal.*work/i.test(
+        if (
+          /country/i.test(lbl) &&
+          !/country.*cuba|ofac|authori[sz]|legally.*work|eligible.*work|work.*authori[sz]/i.test(
             lbl,
           )
         ) {
           await pickReactSelect(page, el, {
-            matchFn: (t) => /^yes\b/i.test(t.trim()),
+            search: "United States",
+            matchFn: (t) => /^United States\b/i.test(t.trim()),
+          });
+        } else if (/location.*city|city.*location/i.test(lbl)) {
+          await pickReactSelect(page, el, { search: "Chicago" });
+        } else if (
+          /authori[sz]|legally.*(work|employ)|legal.*authori[sz]|eligible.*work|work.*authori[sz]|currently.*legal.*work/i.test(
+            lbl,
+          )
+        ) {
+          await pickReactSelect(page, el, {
+            matchFn: (t) => {
+              const txt = t.trim().toLowerCase();
+              return (
+                /^yes\b/.test(txt) ||
+                /us citizen/i.test(txt) ||
+                /citizen/i.test(txt) ||
+                /authori[sz]ed.*work/i.test(txt) ||
+                /i am authori[sz]ed/i.test(txt) ||
+                /permanent resident/i.test(txt) ||
+                /green card/i.test(txt) ||
+                /no.*sponsorship.*required/i.test(txt)
+              );
+            },
           }).catch(async () => {
             // Fallback: try native select or search-based approach
             await el.selectOption?.({ label: "Yes" }).catch(() => {});
@@ -498,6 +538,15 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             },
           }).catch(async () => {
             await pickReactSelect(page, el, { search: "4" }).catch(() => {});
+          });
+        } else if (
+          /certification|certified|security\+|clearance|do you hold|active.*license|professional.*license/i.test(
+            lbl,
+          )
+        ) {
+          // Certification / clearance questions — default "No" (we don't have these)
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
           });
         } else if (
           /experience|proven|track record|building|working on|familiar|proficient/i.test(lbl)
@@ -593,9 +642,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/tax.*residen|country.*tax|tax.*jurisdiction/i.test(lbl)) {
           // Tax residence — United States
           await pickReactSelect(page, el, {
-            matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
-          }).catch(async () => {
-            await pickReactSelect(page, el, { search: "United States" }).catch(() => {});
+            search: "United States",
+            matchFn: (t) => /^United States\b/i.test(t.trim()),
           });
         } else if (/metaview|consent.*transcrib|consent.*record|interview.*record/i.test(lbl)) {
           // Metaview / interview recording consent — Yes
@@ -611,13 +659,36 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           }).catch(async () => {
             await el.selectOption?.({ label: "I agree" }).catch(() => {});
           });
+        } else if (/current.*location|location.*current|where.*located|where.*live/i.test(lbl)) {
+          // Current location — search for Chicago or United States
+          await pickReactSelect(page, el, { search: "Chicago" }).catch(async () => {
+            await pickReactSelect(page, el, { search: "United States" }).catch(() => {});
+          });
         } else if (lbl) {
-          // Unknown required React Select — open and pick first non-empty option
-          await pickReactSelect(page, el, {}).catch(() => {});
+          // Unknown required React Select — skip if it could be a location/country field
+          // to avoid picking wrong first option (e.g. "Australia")
+          if (/location|region|country|area|city|state/i.test(lbl)) {
+            await pickReactSelect(page, el, { search: "United States" }).catch(async () => {
+              await pickReactSelect(page, el, { search: "Chicago" }).catch(() => {});
+            });
+          } else {
+            await pickReactSelect(page, el, {}).catch(() => {});
+          }
         }
       } else if (isNativeSelect) {
         // Native <select> (rare on new GH boards)
-        if (/authoriz|legally.*(work|employ)|legal.*authoriz|eligible.*work/i.test(lbl)) {
+        if (/country/i.test(lbl) && !/country.*cuba|ofac|tax.*country|country.*tax/i.test(lbl)) {
+          // Country dropdown — select "United States" (various label formats)
+          await el
+            .selectOption({ label: "United States" })
+            .catch(() =>
+              el
+                .selectOption({ label: "United States of America" })
+                .catch(() => el.selectOption({ label: "US" }).catch(() => {})),
+            );
+        } else if (
+          /authori[sz]|legally.*(work|employ)|legal.*authori[sz]|eligible.*work/i.test(lbl)
+        ) {
           await el
             .selectOption({ label: "Yes" })
             .catch(() => el.selectOption({ index: 1 }).catch(() => {}));
@@ -679,11 +750,11 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             await el.fill(coverLetter).catch(() => {});
           }
         } else if (
-          /example|project|describe.*ai|describe.*product|tell us.*about.*experience|tell us.*about.*product|describe.*built/i.test(
+          /example|project|describe.*ai|describe.*product|tell us.*about.*experience|tell us.*about.*product|describe.*built|do you have.*experience|relevant.*experience|experience.*with.*product|experience.*shipping|experience.*platform/i.test(
             lbl,
           )
         ) {
-          // AI project / product experience example
+          // AI project / product / platform experience example
           await el.fill(FA.ai_experience || FA.professional_summary || "").catch(() => {});
         } else if (
           /why.*interest|why.*role|why.*company|why.*want|what.*excites|what.*attracts|motivation|^why\s+\w+\?/i.test(
@@ -693,7 +764,23 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           // "Why [Company]?" or "Why are you interested?" — use cover letter as essay answer
           await el.fill(FA.why_interested || coverLetter || "").catch(() => {});
         } else if (
-          /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample/i.test(lbl)
+          /greatest.*impact|biggest.*impact|most.*impact|proudest.*achievement|biggest.*accomplishment/i.test(
+            lbl,
+          )
+        ) {
+          await el.fill(FA.greatest_impact || FA.ai_experience || "").catch(() => {});
+        } else if (
+          /attribute.*work.*environment|attribute.*seek|thrive|work.*environment.*thrive|ideal.*work|culture.*value/i.test(
+            lbl,
+          )
+        ) {
+          await el.fill(FA.work_environment_attributes || "").catch(() => {});
+        } else if (/tell.*about.*yourself|about yourself|little.*about.*yourself/i.test(lbl)) {
+          await el.fill(FA.professional_summary || "").catch(() => {});
+        } else if (
+          /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample|links.*to.*your.*work|portfolio.*demo|github.*profile|evidence.*built/i.test(
+            lbl,
+          )
         ) {
           // Work samples — provide website and GitHub
           await el
@@ -735,7 +822,11 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill(P.website).catch(() => {});
         } else if (/twitter|x\.com/i.test(lbl)) {
           // Skip — no Twitter
-        } else if (/salary.*expect|desired.*salary/i.test(lbl)) {
+        } else if (/how did you (hear|find|learn)|how.*hear.*about|hear.*about.*this/i.test(lbl)) {
+          await el.fill("LinkedIn").catch(() => {});
+        } else if (
+          /salary.*expect|desired.*salary|expected.*salary|annual.*salary|salary.*role/i.test(lbl)
+        ) {
           await el.fill(FA.compensation_expectation || "200000").catch(() => {});
         } else if (/city.*state|state.*city/i.test(lbl)) {
           // "city and state" combo field (e.g. Stripe: "in what city and state do you reside?")
@@ -775,8 +866,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill(FA.ai_experience || FA.professional_summary || "").catch(() => {});
         } else if (/physical.*address|mailing.*address|full.*address|street.*address/i.test(lbl)) {
           await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
-        } else if (/visa.*status|current.*visa|immigration.*status/i.test(lbl)) {
-          await el.fill(FA.work_authorization || "").catch(() => {});
+        } else if (
+          /visa.*status|current.*visa|immigration.*status|work.*authorization.*status|authorization.*status.*us/i.test(
+            lbl,
+          )
+        ) {
+          await el.fill(FA.work_authorization || "US Citizen").catch(() => {});
         } else if (/legal.*address|full.*address|home.*address|residential.*address/i.test(lbl)) {
           await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
         } else if (/current.*location|where.*located|location.*city|your.*location/i.test(lbl)) {
@@ -850,7 +945,9 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/current.*location.*city|where.*based|where.*you.*located/i.test(lbl)) {
           await el.fill("Chicago, IL").catch(() => {});
         } else if (
-          /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample/i.test(lbl)
+          /sample.*work|work.*sample|portfolio.*link|share.*work|share.*sample|links.*to.*your.*work|portfolio.*demo|github.*profile|evidence.*built/i.test(
+            lbl,
+          )
         ) {
           await el
             .fill("https://myportfolio.vercel.app | https://github.com/janedoe")
@@ -882,7 +979,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         if (val) {
           continue;
         } // already filled
-        if (/authoriz|legally.*work|legal.*work/i.test(qText)) {
+        if (/authori[sz]|legally.*work|legal.*work/i.test(qText)) {
           await pickReactSelect(page, sel, { matchFn: (t) => /^yes\b/i.test(t.trim()) }).catch(
             () => {},
           );
@@ -892,7 +989,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           );
         } else if (/country.*reside|reside.*country|where.*currently.*reside/i.test(qText)) {
           await pickReactSelect(page, sel, {
-            matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+            search: "United States",
+            matchFn: (t) => /^United States\b/i.test(t.trim()),
           }).catch(() => {});
         } else if (/degree|education.*level|highest.*education/i.test(qText)) {
           await pickReactSelect(page, sel, {
@@ -900,6 +998,14 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           }).catch(() => {});
         } else if (/school|university/i.test(qText)) {
           await pickReactSelect(page, sel, { search: "University of Illinois" }).catch(() => {});
+        } else if (/hear about|referral|how.*find|source|hear.*about.*us/i.test(qText)) {
+          await pickReactSelect(page, sel, {
+            matchFn: (t) => /linkedin|job board|website/i.test(t),
+          }).catch(() => {});
+        } else if (/certification|certified|security\+|clearance/i.test(qText)) {
+          await pickReactSelect(page, sel, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(() => {});
         }
       }
     }
@@ -931,6 +1037,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         if (!checked) {
           await cb.check().catch(() => {});
         }
+      } else if (/never held a clearance|no clearance|none.*clearance/i.test(trimmedCbLabel)) {
+        // Security clearance — check "Never held a clearance"
+        const checked = await cb.isChecked().catch(() => false);
+        if (!checked) {
+          await cb.check().catch(() => {});
+        }
       }
     }
   } catch {}
@@ -952,7 +1064,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           const val = await input.inputValue().catch(() => "");
           if (!val) {
             await pickReactSelect(page, input, {
-              matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+              search: "United States",
+              matchFn: (t) => /^United States\b/i.test(t.trim()),
             }).catch(() => {});
           }
         }
@@ -972,7 +1085,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             .catch(() => "");
           if (!val) {
             await pickReactSelect(page, selectInput.first(), {
-              matchFn: (t) => /^(US|USA|United States|U\.S\.?)$/i.test(t.trim()),
+              search: "United States",
+              matchFn: (t) => /^United States\b/i.test(t.trim()),
             }).catch(() => {});
           }
         }
@@ -1202,7 +1316,7 @@ async function submitGreenhouse(page, job, coverLetter) {
 
       // Greenhouse sent an email verification code — try to fetch from Gmail and enter it
       console.log("    [code] Verification code required — checking Gmail…");
-      const code = await fetchGhVerificationCode(90000); // 90s — GH emails can be slow
+      const code = await fetchGhVerificationCode(20000); // 20s — skip fast if emails aren't arriving
       if (code) {
         // Greenhouse uses 8 individual character inputs: security-input-0 … security-input-7
         // Check both page and formCtx (verification may appear in either)
@@ -1500,7 +1614,9 @@ async function submitAshby(page, job, coverLetter) {
 
       // Yes/No buttons (work authorization, sponsorship, etc.)
       if (
-        /authorized.*work|legally.*work|eligible.*work|right to work|legally authorized/i.test(lbl)
+        /authori[sz]ed.*work|legally.*work|eligible.*work|right to work|legally authori[sz]ed/i.test(
+          lbl,
+        )
       ) {
         const yesBtn = container.locator('button:has-text("Yes")');
         if (await yesBtn.isVisible({ timeout: 500 }).catch(() => false)) {

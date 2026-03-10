@@ -73,6 +73,8 @@ export function getFormAnswers() {
     ai_experience: p.form_answers?.ai_experience || "",
     why_interested: p.form_answers?.why_interested || "",
     additional_info: p.form_answers?.additional_info || "",
+    greatest_impact: p.form_answers?.greatest_impact || "",
+    work_environment_attributes: p.form_answers?.work_environment_attributes || "",
     compensation_expectation: p.form_answers?.compensation_expectation || "",
     compensation_text: p.form_answers?.compensation_text || "Open to discussion",
     work_authorization: p.professional?.work_authorization || "US Citizen",

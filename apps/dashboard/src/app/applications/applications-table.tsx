@@ -47,13 +47,37 @@ function getSortValue(app: ApplicationWithJob, key: SortKey): string | number | 
   }
 }
 
+type StatusFilter = "all" | "interested" | "applied" | "rejected" | "withdrawn";
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "interested", label: "Interested" },
+  { key: "applied", label: "Applied" },
+  { key: "rejected", label: "Rejected" },
+  { key: "withdrawn", label: "Withdrawn" },
+];
+
 export function ApplicationsTable({ applications }: ApplicationsTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("application_date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const filteredApps = useMemo(() => {
+    if (statusFilter === "all") {return applications;}
+    return applications.filter((app) => app.status === statusFilter);
+  }, [applications, statusFilter]);
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const app of applications) {
+      counts[app.status] = (counts[app.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [applications]);
 
   const sortedApps = useMemo(() => {
-    const sorted = [...applications].toSorted((a, b) => {
+    const sorted = [...filteredApps].toSorted((a, b) => {
       const aVal = getSortValue(a, sortKey);
       const bVal = getSortValue(b, sortKey);
       if (aVal == null && bVal == null) {return 0;}
@@ -69,7 +93,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
     });
     if (sortDir === "desc") {sorted.reverse();}
     return sorted;
-  }, [applications, sortKey, sortDir]);
+  }, [filteredApps, sortKey, sortDir]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -116,6 +140,32 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
   }
 
   return (
+    <div className="space-y-3">
+      {/* Status filter tabs */}
+      <div className="flex flex-wrap gap-1.5">
+        {STATUS_FILTERS.map(({ key, label }) => {
+          const count = key === "all" ? applications.length : (statusCounts[key] ?? 0);
+          const isActive = statusFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                isActive
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:text-slate-300 hover:border-slate-600"
+              }`}
+            >
+              {label}
+              <span className={`ml-1.5 tabular-nums ${isActive ? "text-emerald-300" : "text-slate-500"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
     <div className="overflow-x-auto rounded-xl border border-slate-700/50">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-slate-700/50 bg-slate-800/80">
@@ -162,6 +212,7 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

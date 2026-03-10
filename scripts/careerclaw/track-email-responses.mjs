@@ -304,9 +304,9 @@ console.log("");
 // Fetch applications and jobs for matching
 const [apps, jobs] = await Promise.all([
   sbGet(
-    "/rest/v1/applications?select=id,job_id,status,platform,notes&order=created_at.desc&limit=500",
+    "/rest/v1/applications?select=id,job_id,status,platform,notes&order=created_at.desc&limit=2000",
   ),
-  sbGet("/rest/v1/jobs?select=id,title,company,url&limit=500"),
+  sbGet("/rest/v1/jobs?select=id,title,company,url&limit=2000"),
 ]);
 
 const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
@@ -324,6 +324,17 @@ for (const app of apps) {
     companyApps.set(companyKey, []);
   }
   companyApps.get(companyKey).push({ app, job });
+  // Also index by first word of multi-word company names (e.g. "Grafana Labs" → "grafana")
+  const firstWord = job.company
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, "")
+    .split(/\s+/)[0];
+  if (firstWord && firstWord !== companyKey && firstWord.length >= 3) {
+    if (!companyApps.has(firstWord)) {
+      companyApps.set(firstWord, []);
+    }
+    companyApps.get(firstWord).push({ app, job });
+  }
 }
 
 // Also build URL domain → application mappings (for greenhouse, lever, etc.)

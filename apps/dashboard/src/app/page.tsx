@@ -1,9 +1,11 @@
 import { ScoreBadge } from "@/components/score-badge";
+import { Pipeline } from "@/components/pipeline";
 import {
   getDashboardMetrics,
   getTopMatches,
   getRecentActivity,
   getOverdueFollowups,
+  getPipelineData,
 } from "@/lib/queries";
 import {
   formatRelativeTime,
@@ -15,12 +17,13 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [metrics, topMatches, recentActivity, overdueFollowups] =
+  const [metrics, topMatches, recentActivity, overdueFollowups, pipelineData] =
     await Promise.all([
       getDashboardMetrics(),
       getTopMatches(15),
       getRecentActivity(15),
       getOverdueFollowups(),
+      getPipelineData(),
     ]);
 
   const activeApps =
@@ -38,6 +41,26 @@ export default async function DashboardPage() {
         <StatChip label="Active" value={activeApps} accent="emerald" />
         <StatChip label="Proposals" value={metrics.totalProposals} accent="amber" />
         <StatChip label="Clients" value={metrics.activeClients} accent="rose" />
+      </div>
+
+      {/* Status breakdown + Pipeline */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-slate-700/50 bg-slate-900 p-4">
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Status Breakdown
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(metrics.applicationsByStatus)
+              .toSorted(([, a], [, b]) => b - a)
+              .map(([status, count]) => (
+                <div key={status} className="flex items-center justify-between rounded-md bg-slate-800/50 px-3 py-1.5">
+                  <span className="text-xs text-slate-400 capitalize">{status.replace(/_/g, " ")}</span>
+                  <span className="text-sm font-bold tabular-nums text-slate-200">{count}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+        <Pipeline data={pipelineData} />
       </div>
 
       {/* Main two-column grid */}

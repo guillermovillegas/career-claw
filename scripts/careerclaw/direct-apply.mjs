@@ -396,7 +396,7 @@ console.log("");
 // Fetch jobs and applications
 const [allJobs, allApps] = await Promise.all([
   sbGet(
-    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,salary_min,salary_max&order=match_score.desc&limit=300",
+    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,salary_min,salary_max&order=match_score.desc&limit=1000",
   ),
   sbGet("/rest/v1/applications?select=job_id"),
 ]);
