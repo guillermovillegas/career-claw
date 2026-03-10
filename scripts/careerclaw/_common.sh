@@ -7,7 +7,12 @@ CAREERCLAW_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # Ensure PATH includes nvm/pnpm for cron execution
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" 2>/dev/null
-export PATH="$HOME/.nvm/versions/node/v22.19.0/bin:$HOME/Library/pnpm:$PATH"
+# Add latest Node 22.x from nvm + pnpm to PATH (flexible across minor versions)
+if [ -d "$HOME/.nvm/versions/node" ]; then
+  NODE22_DIR=$(ls -d "$HOME/.nvm/versions/node/v22"* 2>/dev/null | sort -V | tail -1)
+  [ -n "$NODE22_DIR" ] && export PATH="$NODE22_DIR/bin:$PATH"
+fi
+export PATH="$HOME/Library/pnpm:$PATH"
 
 # Load CareerClaw environment (Supabase creds, API keys, rate limits)
 if [ -f "$CAREERCLAW_ROOT/.env" ]; then
