@@ -1865,7 +1865,7 @@ async function submitGreenhouse(page, job, coverLetter) {
             );
             await page.waitForTimeout(5000);
             // Try to get a fresh verification code
-            const freshCode = await pollForGhCode(20);
+            const freshCode = await fetchGhVerificationCode(20000);
             if (freshCode && freshCode !== code) {
               console.log(`  [gmail] Fresh verification code: ${freshCode}`);
               // Clear and re-enter code inputs
@@ -2354,7 +2354,7 @@ async function submitGreenhouse(page, job, coverLetter) {
         const verifyScreenPath = `/tmp/gh-verify-${Date.now()}.png`;
         await page.screenshot({ path: verifyScreenPath, fullPage: false }).catch(() => {});
         console.log("    [code] Verification code required — checking Gmail…");
-        const code = await pollForGhCode();
+        const code = await fetchGhVerificationCode();
         if (code) {
           try {
             const codeInputs = formCtx.locator('[id^="security-input-"]');
@@ -2383,7 +2383,7 @@ async function submitGreenhouse(page, job, coverLetter) {
                 "    [code] Server error after code — waiting 5s then fetching fresh code...",
               );
               await page.waitForTimeout(5000);
-              const freshCode = await pollForGhCode(20);
+              const freshCode = await fetchGhVerificationCode(20000);
               if (freshCode && freshCode !== code) {
                 console.log(`  [gmail] Fresh verification code: ${freshCode}`);
                 const codeInputs2 = formCtx.locator('[id^="security-input-"]');
