@@ -46,7 +46,7 @@ All personal data lives in `config/profile.json`. You configure once, the script
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/janedoe/career-claw.git
+git clone https://github.com/your-username/career-claw.git
 cd career-claw
 pnpm install
 

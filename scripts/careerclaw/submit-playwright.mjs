@@ -392,11 +392,24 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         }
         // Try ancestor field container (Greenhouse: .select__container > label, or .field > label)
         if (!lblEl) {
-          const field = el.closest(
-            ".select__container, .field, .application-field, [class*='question'], .form-group, .qs-form-group",
-          );
-          if (field) {
-            lblEl = field.querySelector("label, legend, .field-label, .label");
+          const containers = [
+            ".select__container",
+            ".field",
+            ".application-field",
+            "[class*='question']",
+            ".form-group",
+            ".qs-form-group",
+          ];
+          // Walk up the DOM trying each container — some inner containers
+          // (like .select__container) don't hold the label; the outer .field does
+          for (const sel of containers) {
+            const ctr = el.closest(sel);
+            if (ctr) {
+              lblEl = ctr.querySelector("label, legend, .field-label, .label");
+              if (lblEl) {
+                break;
+              }
+            }
           }
         }
         // Try closest label ancestor
@@ -493,6 +506,18 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           }
         } else if (/^(chicago|chicago,?\s*il|chicago,?\s*illinois)/i.test(lbl.trim())) {
           // Office location checkbox group — check Chicago option
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
+        } else if (/^none$/i.test(lbl.trim())) {
+          // "None" in office/location checkbox groups — check if no other option applies
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
+        } else if (/^he\/?him\/?his$/i.test(lbl.trim())) {
+          // Pronoun checkbox — check He/Him/His
           const checked = await el.isChecked().catch(() => false);
           if (!checked) {
             await el.check().catch(() => {});
@@ -993,9 +1018,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           // Work samples — provide website and GitHub
-          await el
-            .fill("https://myportfolio.vercel.app | https://github.com/janedoe")
-            .catch(() => {});
+          await el.fill(`${P.website} | ${P.github}`).catch(() => {});
         } else if (
           /how did you (hear|find|learn)|how.*hear.*about|how.*learn.*about|selected.*other.*how|tell us how you learned/i.test(
             lbl,
@@ -1064,6 +1087,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           /salary.*expect|desired.*salary|expected.*salary|annual.*salary|salary.*role/i.test(lbl)
         ) {
           await el.fill(FA.compensation_expectation || "200000").catch(() => {});
+        } else if (/time\s*zone|timezone|your.*tz/i.test(lbl)) {
+          await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
         } else if (/city.*state|state.*city/i.test(lbl)) {
           // "city and state" combo field (e.g. Stripe: "in what city and state do you reside?")
           await el.fill("Chicago, IL").catch(() => {});
@@ -1230,8 +1255,6 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill("Computer Science").catch(() => {});
         } else if (/graduation.*year|year.*graduat/i.test(lbl)) {
           await el.fill("2015").catch(() => {});
-        } else if (/time\s*zone|timezone|your.*tz/i.test(lbl)) {
-          await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
         } else if (
           /have you (applied|previously|ever).*before|previously applied|applied.*in the (last|past)|applied.*24 months|applied.*12 months/i.test(
             lbl,
@@ -1263,9 +1286,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             lbl,
           )
         ) {
-          await el
-            .fill("https://myportfolio.vercel.app | https://github.com/janedoe")
-            .catch(() => {});
+          await el.fill(`${P.website} | ${P.github}`).catch(() => {});
         }
         // Unknown text fields: leave blank (non-required will pass)
       }
