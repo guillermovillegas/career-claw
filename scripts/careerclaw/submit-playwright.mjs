@@ -363,6 +363,12 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
 async function fillGhForm(page, coverLetter, companyName = "unknown") {
   const { writeFileSync } = await import("fs");
 
+  // Scroll to bottom + back to top to trigger lazy-loading of EEOC sections
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(800);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(300);
+
   // Collect all visible form inputs with their labels
   const fieldIds = await page.evaluate(() => {
     const els = document.querySelectorAll(
@@ -1919,6 +1925,70 @@ async function submitGreenhouse(page, job, coverLetter) {
           return results;
         })
         .catch(() => []);
+
+      // Also scan for unfilled React Selects by looking for placeholder text
+      // (catches fields the main scanner missed due to lazy loading)
+      const moreUnfilled = await formCtx
+        .evaluate(() => {
+          const results = [];
+          // Find all select containers that still show "Select..." placeholder
+          document.querySelectorAll(".select__container").forEach((container) => {
+            const placeholder = container.querySelector(".select__placeholder");
+            if (!placeholder) {
+              return;
+            } // Already has a value
+            // Get the input inside
+            const inp = container.querySelector(
+              "input.select__input, input[class*='select__input']",
+            );
+            if (!inp) {
+              return;
+            }
+            // Resolve label — check parent .field for label element
+            let label = "";
+            const field = container.closest(".field, .application-field, [class*='question']");
+            if (field) {
+              const lblEl = field.querySelector("label, legend, .field-label");
+              if (lblEl) {
+                label = lblEl.textContent.trim();
+              }
+            }
+            // Fallback: look for text content in preceding sibling
+            if (!label) {
+              let prev = container.previousElementSibling;
+              while (prev) {
+                if (prev.tagName === "LABEL" || prev.classList?.contains("field-label")) {
+                  label = prev.textContent.trim();
+                  break;
+                }
+                prev = prev.previousElementSibling;
+              }
+            }
+            if (!inp.id) {
+              inp.id = `_cc_placeholder_${Math.random().toString(36).slice(2, 8)}`;
+            }
+            // Avoid duplicates with the error-based scan
+            results.push({
+              id: inp.id,
+              label,
+              cls: inp.className || "",
+              tag: "input",
+              type: inp.type || "text",
+              errText: "unfilled required select",
+            });
+          });
+          return results;
+        })
+        .catch(() => []);
+
+      // Merge, dedup by id
+      const seenIds = new Set(unfilled.map((u) => u.id));
+      for (const mu of moreUnfilled) {
+        if (!seenIds.has(mu.id)) {
+          unfilled.push(mu);
+          seenIds.add(mu.id);
+        }
+      }
 
       if (unfilled.length > 0) {
         console.log(`    [retry] Found ${unfilled.length} unfilled required field(s):`);
