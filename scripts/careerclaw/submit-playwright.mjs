@@ -1858,34 +1858,88 @@ async function submitGreenhouse(page, job, coverLetter) {
           ) {
             return { success: true };
           }
-          // Server processing error — retry once
+          // Server processing error — retry with fresh code
           if (/error processing your application|please try again/i.test(body2)) {
-            console.log("    [code] Server error after code — retrying submit...");
-            await page.waitForTimeout(3000);
-            const retryBtn2 = codeCtx
-              .locator(
-                'input#submit_app, input[value="Submit Application"], button[type="submit"], button:has-text("Submit")',
-              )
-              .last();
-            await retryBtn2.click().catch(() => {});
-            await page.waitForTimeout(10000);
-            let body3 = await page.textContent("body").catch(() => "");
-            if (formCtx !== page) {
-              body3 +=
-                " " +
-                (await formCtx
-                  .locator("body")
-                  .textContent()
-                  .catch(() => ""));
-            }
-            if (
-              /thank you|thanks for applying|application received|successfully submitted|we.ll be in touch|application submitted|we received your/i.test(
-                body3,
-              )
-            ) {
-              return { success: true };
+            console.log(
+              "    [code] Server error after code — waiting 5s then fetching fresh code...",
+            );
+            await page.waitForTimeout(5000);
+            // Try to get a fresh verification code
+            const freshCode = await pollForGhCode(20);
+            if (freshCode && freshCode !== code) {
+              console.log(`  [gmail] Fresh verification code: ${freshCode}`);
+              // Clear and re-enter code inputs
+              for (let i = 0; i < freshCode.length; i++) {
+                const inp = codeCtx.locator(`[id="security-input-${i}"]`);
+                await inp.fill("").catch(() => {});
+                await page.waitForTimeout(30);
+                await inp.fill(freshCode[i]).catch(() => {});
+                await page.waitForTimeout(60);
+              }
+              await page.waitForTimeout(500);
+              const retryBtn2 = codeCtx
+                .locator(
+                  'input#submit_app, input[value="Submit Application"], button[type="submit"], button:has-text("Submit")',
+                )
+                .last();
+              await retryBtn2.click().catch(() => {});
+              await page.waitForTimeout(10000);
+              let body3 = await page.textContent("body").catch(() => "");
+              if (formCtx !== page) {
+                body3 +=
+                  " " +
+                  (await formCtx
+                    .locator("body")
+                    .textContent()
+                    .catch(() => ""));
+              }
+              if (
+                /thank you|thanks for applying|application received|successfully submitted|we.ll be in touch|application submitted|we received your/i.test(
+                  body3,
+                )
+              ) {
+                return { success: true };
+              }
+            } else {
+              // No fresh code — just retry submit with existing code
+              console.log("    [code] No fresh code — retrying submit...");
+              const retryBtn2 = codeCtx
+                .locator(
+                  'input#submit_app, input[value="Submit Application"], button[type="submit"], button:has-text("Submit")',
+                )
+                .last();
+              await retryBtn2.click().catch(() => {});
+              await page.waitForTimeout(10000);
+              let body3 = await page.textContent("body").catch(() => "");
+              if (formCtx !== page) {
+                body3 +=
+                  " " +
+                  (await formCtx
+                    .locator("body")
+                    .textContent()
+                    .catch(() => ""));
+              }
+              if (
+                /thank you|thanks for applying|application received|successfully submitted|we.ll be in touch|application submitted|we received your/i.test(
+                  body3,
+                )
+              ) {
+                return { success: true };
+              }
             }
           }
+
+          // Check if page navigated away from form (potential silent success)
+          const currentUrl = page.url();
+          if (
+            currentUrl &&
+            !/greenhouse\.io/i.test(currentUrl) &&
+            !/security|verify|code/i.test(await page.textContent("body").catch(() => ""))
+          ) {
+            console.log("    [code] Page navigated away from GH — possible silent success");
+            return { success: true };
+          }
+
           const debugPath2 = `/tmp/gh-after-code-${Date.now()}.png`;
           await page.screenshot({ path: debugPath2 }).catch(() => {});
           return {
@@ -2325,14 +2379,29 @@ async function submitGreenhouse(page, job, coverLetter) {
               return { success: true };
             }
             if (/error processing your application|please try again/i.test(codeBody)) {
-              console.log("    [code] Server error after code — retrying submit...");
-              await page.waitForTimeout(3000);
+              console.log(
+                "    [code] Server error after code — waiting 5s then fetching fresh code...",
+              );
+              await page.waitForTimeout(5000);
+              const freshCode = await pollForGhCode(20);
+              if (freshCode && freshCode !== code) {
+                console.log(`  [gmail] Fresh verification code: ${freshCode}`);
+                const codeInputs2 = formCtx.locator('[id^="security-input-"]');
+                const codeCount2 = await codeInputs2.count();
+                for (let ci = 0; ci < Math.min(freshCode.length, codeCount2); ci++) {
+                  await codeInputs2.nth(ci).fill("");
+                  await formCtx.waitForTimeout(30);
+                  await codeInputs2.nth(ci).fill(freshCode[ci]);
+                  await formCtx.waitForTimeout(50);
+                }
+                await formCtx.waitForTimeout(500);
+              }
               const retryBtn = formCtx
                 .locator('button:has-text("Submit"), input[type="submit"]')
                 .first();
               if ((await retryBtn.count()) > 0) {
                 await retryBtn.click({ force: true, timeout: 5000 }).catch(() => {});
-                await formCtx.waitForTimeout(5000);
+                await formCtx.waitForTimeout(8000);
                 const retryCodeBody = await formCtx
                   .locator("body")
                   .textContent({ timeout: 3000 })
@@ -2342,13 +2411,25 @@ async function submitGreenhouse(page, job, coverLetter) {
                 }
               }
             }
+            // Check if page navigated away from form (possible silent success)
+            const postRetryUrl = page.url();
+            if (
+              postRetryUrl &&
+              !/greenhouse\.io/i.test(postRetryUrl) &&
+              !/security|verify|code/i.test(await page.textContent("body").catch(() => ""))
+            ) {
+              console.log("    [code] Page navigated away from GH — possible silent success");
+              return { success: true };
+            }
           } catch (e) {
             return { success: false, reason: `Post-retry code error: ${e.message.slice(0, 80)}` };
           }
         }
+        const postRetryDebugPath = `/tmp/gh-post-retry-code-${Date.now()}.png`;
+        await page.screenshot({ path: postRetryDebugPath }).catch(() => {});
         return {
           success: false,
-          reason: `Post-retry: verification code ${code ? "entered" : "not found"} (screenshot: ${verifyScreenPath})`,
+          reason: `Post-retry: verification code ${code ? "entered" : "not found"} (screenshot: ${postRetryDebugPath})`,
         };
       }
 
@@ -2406,6 +2487,16 @@ async function submitLever(page, job, coverLetter) {
   } catch {}
 
   await page.waitForTimeout(1000);
+
+  // Early hCaptcha detection — bail immediately if Lever uses captcha
+  const hasHcaptcha = await page
+    .locator('#hcaptchaSubmitBtn, [id*="hcaptcha"], iframe[src*="hcaptcha"]')
+    .first()
+    .count()
+    .catch(() => 0);
+  if (hasHcaptcha > 0) {
+    return { success: false, reason: "hCaptcha detected — Lever requires manual submission" };
+  }
 
   await tryFill(page, ['input[name="name"]', "#name"], `${P.first_name} ${P.last_name}`);
   await tryFill(page, ['input[name="email"]', "#email", 'input[type="email"]'], P.email);
@@ -3008,7 +3099,12 @@ function isDuplicate(job) {
 // Skip apps where we already applied to same company+role in last 30 days
 const toSubmit = applications.filter((a) => {
   const j = jobMap[a.job_id];
-  if (!j?.url || !detectPlatform(j.url) || (a.match_score || 0) < MIN_SCORE) {
+  const platform = j?.url ? detectPlatform(j.url) : null;
+  if (!platform || (a.match_score || 0) < MIN_SCORE) {
+    return false;
+  }
+  // Lever uses hCaptcha on all forms — skip auto-submit (as of 2026-03)
+  if (platform === "lever") {
     return false;
   }
   // Skip if already failed auto-submit (notes contain failure marker)
@@ -3026,7 +3122,9 @@ const manual = applications.filter((a) => {
   if (isDuplicate(j)) {
     return false;
   }
-  return !j?.url || !detectPlatform(j.url);
+  const plat = j?.url ? detectPlatform(j.url) : null;
+  // Include non-ATS URLs AND Lever (hCaptcha-blocked) in manual list
+  return !plat || plat === "lever";
 });
 const dedupSkipped = applications.filter((a) => isDuplicate(jobMap[a.job_id]));
 if (dedupSkipped.length) {
