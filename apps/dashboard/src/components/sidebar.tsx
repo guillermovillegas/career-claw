@@ -16,13 +16,16 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-14 flex-col border-r border-slate-700/50 bg-slate-950">
-      {/* Logo mark */}
-      <div className="flex h-14 items-center justify-center border-b border-slate-700/50">
-        <span className="text-lg font-black text-emerald-400" title="CareerClaw">C</span>
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-48 flex-col border-r border-slate-700/50 bg-slate-950">
+      {/* Logo */}
+      <div className="flex h-14 items-center gap-2.5 border-b border-slate-700/50 px-4">
+        <span className="text-lg font-black text-emerald-400">C</span>
+        <span className="text-sm font-semibold text-slate-300 tracking-tight">
+          CareerClaw
+        </span>
       </div>
 
-      <nav className="flex-1 flex flex-col items-center gap-1 py-3">
+      <nav className="flex-1 flex flex-col gap-0.5 px-2 py-3">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const isActive =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -30,18 +33,25 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
-              title={label}
-              className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                 isActive
-                  ? "bg-emerald-500/15 text-emerald-400"
-                  : "text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+                  ? "bg-emerald-500/15 text-emerald-400 font-medium"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
               }`}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4.5 w-4.5 shrink-0" />
+              <span>{label}</span>
             </Link>
           );
         })}
       </nav>
+
+      {/* Footer */}
+      <div className="border-t border-slate-700/50 px-4 py-3">
+        <p className="text-[10px] text-slate-600 uppercase tracking-wider">
+          547 apps / 13 rejected
+        </p>
+      </div>
     </aside>
   );
 }

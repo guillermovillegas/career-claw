@@ -395,3 +395,83 @@ export async function getApplicationAutomationContext(
   if (error) {throw error;}
   return (data as AutomationLog[]) ?? [];
 }
+
+// Form Q&A for a specific application (from automation_logs details.form_qa)
+export interface FormQAEntry {
+  question: string;
+  answer: string;
+}
+
+export async function getApplicationFormQA(
+  appCreatedAt: string,
+  companyName: string
+): Promise<FormQAEntry[]> {
+  const center = new Date(appCreatedAt).getTime();
+  const WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+  const from = new Date(center - WINDOW_MS).toISOString();
+  const to = new Date(center + WINDOW_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("automation_logs")
+    .select("details")
+    .eq("action_type", "application_submit")
+    .gte("created_at", from)
+    .lte("created_at", to)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {throw error;}
+
+  const companyLower = companyName.toLowerCase();
+
+  for (const row of data ?? []) {
+    const details = parseLogDetails(row.details);
+    if (!details) {continue;}
+
+    const formQa = details.form_qa;
+    if (!formQa || typeof formQa !== "object") {continue;}
+
+    // form_qa is keyed by company name
+    for (const [company, qaPairs] of Object.entries(
+      formQa as Record<string, unknown>
+    )) {
+      if (company.toLowerCase() !== companyLower) {continue;}
+      if (!Array.isArray(qaPairs)) {continue;}
+
+      const entries: FormQAEntry[] = [];
+      for (const pair of qaPairs) {
+        if (
+          pair &&
+          typeof pair === "object" &&
+          "q" in pair &&
+          "a" in pair
+        ) {
+          const typed = pair as { q: string; a: string };
+          entries.push({ question: String(typed.q), answer: String(typed.a) });
+        }
+      }
+      if (entries.length > 0) {return entries;}
+    }
+  }
+
+  return [];
+}
+
+function parseLogDetails(
+  details: Application["notes"] | AutomationLog["details"]
+): Record<string, unknown> | null {
+  if (typeof details === "string") {
+    try {
+      const parsed: unknown = JSON.parse(details);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+  }
+  if (details && typeof details === "object" && !Array.isArray(details)) {
+    return details as Record<string, unknown>;
+  }
+  return null;
+}
