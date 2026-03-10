@@ -412,6 +412,24 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             }
           }
         }
+        // Try previous sibling label (label is sibling of the select container, not inside it)
+        if (!lblEl) {
+          const wrapper = el.closest(
+            ".select__container, .field, .application-field, [class*='question'], .form-group",
+          );
+          let prev = wrapper ? wrapper.previousElementSibling : el.previousElementSibling;
+          while (prev && !lblEl) {
+            if (prev.tagName === "LABEL" || prev.classList?.contains("field-label")) {
+              lblEl = prev;
+            } else {
+              const inner = prev.querySelector?.("label, .field-label");
+              if (inner) {
+                lblEl = inner;
+              }
+            }
+            prev = prev.previousElementSibling;
+          }
+        }
         // Try closest label ancestor
         if (!lblEl) {
           lblEl = el.closest("label");
@@ -455,6 +473,24 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
     const isFile = f.type === "file";
     const isNativeSelect = f.tag === "select";
 
+    // Helper: force-check a checkbox (Playwright .check() fails on hidden/custom-styled checkboxes)
+    const forceCheck = async (cb) => {
+      const checked = await cb.isChecked().catch(() => false);
+      if (checked) {
+        return;
+      }
+      await cb.check().catch(async () => {
+        // Fallback: JS-based check for hidden/custom-styled checkboxes
+        await cb
+          .evaluate((e) => {
+            e.checked = true;
+            e.dispatchEvent(new Event("change", { bubbles: true }));
+            e.dispatchEvent(new Event("input", { bubbles: true }));
+          })
+          .catch(() => {});
+      });
+    };
+
     try {
       if (isFile) {
         continue;
@@ -464,64 +500,34 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           /acknowledge/i.test(lbl) || // EEO acknowledgements
           /consent|agree|terms|gdpr|privacy|^confirm$|^i confirm/i.test(lbl) // GDPR/consent/confirm
         ) {
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^linkedin$/i.test(lbl)) {
           // "How did you hear about us" — check LinkedIn option
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^(united states|us|usa|u\.s\.?)$/i.test(lbl.trim())) {
           // Country checkbox lists (e.g. "countries you anticipate working in")
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^remote$/i.test(lbl.trim())) {
           // Location preference checkboxes — always check "Remote"
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/never held a clearance|no clearance|none.*clearance/i.test(lbl.trim())) {
           // Security clearance checkbox groups — check "Never held a clearance"
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^none of the above$|^none of these apply/i.test(lbl.trim())) {
           // Restrictive country / OFAC checkbox groups — check "None of the above"
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^u\.?s\.?\s*citizen$/i.test(lbl.trim())) {
           // Citizenship status — check "U.S. citizen"
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^(chicago|chicago,?\s*il|chicago,?\s*illinois)/i.test(lbl.trim())) {
           // Office location checkbox group — check Chicago option
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^none$/i.test(lbl.trim())) {
           // "None" in office/location checkbox groups — check if no other option applies
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^he\/?him\/?his$/i.test(lbl.trim())) {
           // Pronoun checkbox — check He/Him/His
-          const checked = await el.isChecked().catch(() => false);
-          if (!checked) {
-            await el.check().catch(() => {});
-          }
+          await forceCheck(el);
         } else if (/^not applicable.*none of the above/i.test(lbl.trim())) {
           // "Not applicable (i.e., I selected 'none of the above')" — skip; we have a real answer
         }
