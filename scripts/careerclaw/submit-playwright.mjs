@@ -2388,10 +2388,45 @@ if (!applications.length) {
   process.exit(0);
 }
 
-// Fetch jobs
+// Fetch jobs (include work_mode and location for priority sorting)
 const jobIds = [...new Set(applications.map((a) => a.job_id).filter(Boolean))];
-const jobs = await sGet(`jobs?id=in.(${jobIds.join(",")})&select=id,title,company,url,match_score`);
+const jobs = await sGet(
+  `jobs?id=in.(${jobIds.join(",")})&select=id,title,company,url,match_score,work_mode,location`,
+);
 const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
+
+// Location priority: hybrid/onsite in Chicago > remote in Chicago > remote US > other
+function locationPriority(job) {
+  if (!job) {
+    return 0;
+  }
+  const loc = (job.location || "").toLowerCase();
+  const mode = (job.work_mode || "").toLowerCase();
+  const isChicago = /chicago|chi\b/i.test(loc);
+  if (isChicago && (mode === "hybrid" || mode === "on-site")) {
+    return 30;
+  }
+  if (isChicago && mode === "remote") {
+    return 20;
+  }
+  if (isChicago) {
+    return 15;
+  }
+  if (mode === "remote") {
+    return 10;
+  }
+  return 0;
+}
+
+// Re-sort applications by location priority (tiebreak: match_score desc)
+applications.sort((a, b) => {
+  const pa = locationPriority(jobMap[a.job_id]);
+  const pb = locationPriority(jobMap[b.job_id]);
+  if (pa !== pb) {
+    return pb - pa;
+  } // higher priority first
+  return (b.match_score || 0) - (a.match_score || 0); // higher score first
+});
 
 // Helper: check if company+role was already applied to within 30 days
 function isDuplicate(job) {

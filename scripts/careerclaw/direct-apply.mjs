@@ -404,7 +404,7 @@ console.log("");
 // Fetch jobs and applications
 const [allJobs, allApps] = await Promise.all([
   sbGet(
-    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,salary_min,salary_max&order=match_score.desc&limit=1000",
+    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,location,salary_min,salary_max&order=match_score.desc&limit=1000",
   ),
   sbGet("/rest/v1/applications?select=job_id"),
 ]);
@@ -461,6 +461,29 @@ function isDuplicate(job) {
   return recentAppliedRoles.has(key);
 }
 
+// Location priority: hybrid/onsite in Chicago > remote in Chicago > remote US > other
+function locationPriority(job) {
+  if (!job) {
+    return 0;
+  }
+  const loc = (job.location || "").toLowerCase();
+  const mode = (job.work_mode || "").toLowerCase();
+  const isChicago = /chicago|chi\b/i.test(loc);
+  if (isChicago && (mode === "hybrid" || mode === "on-site")) {
+    return 30;
+  }
+  if (isChicago && mode === "remote") {
+    return 20;
+  }
+  if (isChicago) {
+    return 15;
+  }
+  if (mode === "remote") {
+    return 10;
+  }
+  return 0;
+}
+
 // Filter: unapplied, full-time, score >= MIN_SCORE, no 30-day duplicate
 let dedupSkipped = 0;
 const candidates = allJobs
@@ -479,6 +502,14 @@ const candidates = allJobs
       return false;
     }
     return true;
+  })
+  .toSorted((a, b) => {
+    const pa = locationPriority(a);
+    const pb = locationPriority(b);
+    if (pa !== pb) {
+      return pb - pa;
+    }
+    return (b.match_score || 0) - (a.match_score || 0);
   })
   .slice(0, LIMIT);
 if (dedupSkipped) {
