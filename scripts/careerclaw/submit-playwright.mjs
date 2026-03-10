@@ -491,6 +491,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           if (!checked) {
             await el.check().catch(() => {});
           }
+        } else if (/^(chicago|chicago,?\s*il|chicago,?\s*illinois)/i.test(lbl.trim())) {
+          // Office location checkbox group — check Chicago option
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
         } else if (/^not applicable.*none of the above/i.test(lbl.trim())) {
           // "Not applicable (i.e., I selected 'none of the above')" — skip; we have a real answer
         }
@@ -543,6 +549,14 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           }).catch(async () => {
             // If "No" not found, try typing it
             await pickReactSelect(page, el, { search: "No" }).catch(() => {});
+          });
+        } else if (/citizenship|citizen.*country|dual.*national|national.*status/i.test(lbl)) {
+          // Citizenship / dual nationality — select United States
+          await pickReactSelect(page, el, {
+            search: "United States",
+            matchFn: (t) => /^United States\b|^US$|^USA$/i.test(t.trim()),
+          }).catch(async () => {
+            await pickReactSelect(page, el, { search: "US" }).catch(() => {});
           });
         } else if (/cuba|iran|north korea|sanctioned|ofac/i.test(lbl)) {
           await pickReactSelect(page, el, {
@@ -866,6 +880,49 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           if (human) {
             await el.selectOption({ label: human }).catch(() => {});
           }
+        } else if (
+          /how many years|years of experience|years.*product|years.*management|years.*professional|total.*years/i.test(
+            lbl,
+          )
+        ) {
+          // Years of experience native select — pick highest reasonable bracket
+          const opts = await el.locator("option").allTextContents();
+          const best = opts.find((o) =>
+            /^10\b|^10\+|10\s*-|8\s*-\s*10|8\+|7\+|7\s*-\s*10/i.test(o.trim()),
+          );
+          if (best) {
+            await el.selectOption({ label: best }).catch(() => {});
+          } else {
+            // Fallback: pick last real option (usually highest range)
+            const real = opts.filter((o) => o.trim() && !/select|choose|--/i.test(o.trim()));
+            if (real.length > 0) {
+              await el.selectOption({ label: real[real.length - 1] }).catch(() => {});
+            }
+          }
+        } else if (
+          /do you have (at least|a minimum|more than|\d+\+?\s*years?)|are you.*comfortable|are you.*proficient/i.test(
+            lbl,
+          )
+        ) {
+          // Screening yes/no native select
+          await el
+            .selectOption({ label: "Yes" })
+            .catch(() => el.selectOption({ index: 1 }).catch(() => {}));
+        } else if (/citizenship|citizen.*country|dual.*national|national.*status/i.test(lbl)) {
+          // Citizenship questions — select "United States" or "US Citizen"
+          const opts = await el.locator("option").allTextContents();
+          const us = opts.find((o) => /united states|us$|usa|u\.s\./i.test(o.trim()));
+          if (us) {
+            await el.selectOption({ label: us }).catch(() => {});
+          } else {
+            await el
+              .selectOption({ label: "United States" })
+              .catch(() =>
+                el
+                  .selectOption({ label: "United States of America" })
+                  .catch(() => el.selectOption({ label: "US" }).catch(() => {})),
+              );
+          }
         } else {
           // EEO or unknown — pick first non-blank
           const opts = await el.locator("option").allTextContents();
@@ -944,7 +1001,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             await el.fill("LinkedIn").catch(() => {});
           }
         } else if (
-          /do you have \d+\+?\s*years?|are you.*experienced|are you.*comfortable|are you.*proficient/i.test(
+          /do you have\s+(at least\s+|a minimum of?\s+|more than\s+)?\d+\+?\s*years?|are you.*experienced|are you.*comfortable|are you.*proficient/i.test(
             lbl,
           )
         ) {
@@ -1337,11 +1394,21 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
     }
   } catch {}
 
-  // ─── Resume upload (first file input with id containing "resume") ──────────
-  const resumeInput = page
-    .locator('#resume[type="file"], input[id*="resume"][type="file"]')
-    .first();
+  // ─── Resume upload (first file input with id containing "resume" or "cv") ──
+  let resumeInput = page.locator('#resume[type="file"], input[id*="resume"][type="file"]').first();
   try {
+    if ((await resumeInput.count()) === 0) {
+      // Broader search: any file input near a resume/CV label
+      resumeInput = page
+        .locator(
+          'input[type="file"][id*="cv"], input[type="file"][name*="resume"], input[type="file"][name*="cv"], input[type="file"][data-field*="resume"]',
+        )
+        .first();
+    }
+    if ((await resumeInput.count()) === 0) {
+      // Last resort: first file input on the page (most GH forms have resume as first)
+      resumeInput = page.locator('input[type="file"]').first();
+    }
     if ((await resumeInput.count()) > 0) {
       await resumeInput.setInputFiles(RESUME_PATH);
       await page.waitForTimeout(800);
