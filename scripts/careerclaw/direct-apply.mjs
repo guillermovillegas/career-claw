@@ -408,7 +408,53 @@ if (!Array.isArray(allJobs)) {
 
 const appliedIds = new Set(allApps.map((a) => a.job_id));
 
-// Filter: unapplied, full-time, score >= MIN_SCORE, not past deadline
+// ─── 30-day dedup: prevent re-applying to same company+role within 30 days ──
+const DEDUP_DAYS = 30;
+const dedupSince = new Date(Date.now() - DEDUP_DAYS * 86400000).toISOString().slice(0, 10);
+const recentlyApplied = await sbGet(
+  `/rest/v1/applications?status=in.(applied,interview,phone_screen,final,hired)&application_date=gte.${dedupSince}&select=id,job_id`,
+);
+const recentAppliedJobIds = new Set(
+  Array.isArray(recentlyApplied) ? recentlyApplied.map((a) => a.job_id) : [],
+);
+
+// Build company+title set for cross-application dedup
+const recentJobIds = [
+  ...new Set(
+    (Array.isArray(recentlyApplied) ? recentlyApplied : []).map((a) => a.job_id).filter(Boolean),
+  ),
+];
+let recentAppliedRoles = new Set();
+if (recentJobIds.length) {
+  const recentJobs = await sbGet(
+    `/rest/v1/jobs?id=in.(${recentJobIds.join(",")})&select=id,title,company`,
+  );
+  if (Array.isArray(recentJobs)) {
+    recentAppliedRoles = new Set(
+      recentJobs.map(
+        (j) =>
+          `${(j.company || "").toLowerCase().trim()}|||${(j.title || "").toLowerCase().trim()}`,
+      ),
+    );
+  }
+}
+console.log(
+  `Dedup: ${recentAppliedJobIds.size} applied in last ${DEDUP_DAYS} days (${recentAppliedRoles.size} unique company+role combos)`,
+);
+
+function isDuplicate(job) {
+  if (!job) {
+    return false;
+  }
+  if (recentAppliedJobIds.has(job.id)) {
+    return true;
+  }
+  const key = `${(job.company || "").toLowerCase().trim()}|||${(job.title || "").toLowerCase().trim()}`;
+  return recentAppliedRoles.has(key);
+}
+
+// Filter: unapplied, full-time, score >= MIN_SCORE, no 30-day duplicate
+let dedupSkipped = 0;
 const candidates = allJobs
   .filter((j) => {
     if (!j.id || appliedIds.has(j.id)) {
@@ -420,9 +466,18 @@ const candidates = allJobs
     if (j.job_type && j.job_type !== "full-time") {
       return false;
     }
+    if (isDuplicate(j)) {
+      dedupSkipped++;
+      return false;
+    }
     return true;
   })
   .slice(0, LIMIT);
+if (dedupSkipped) {
+  console.log(
+    `Skipped ${dedupSkipped} duplicate(s) (same company+role applied within ${DEDUP_DAYS} days)`,
+  );
+}
 
 console.log(`Found ${candidates.length} job(s) to apply to.\n`);
 

@@ -2217,6 +2217,29 @@ if (!existsSync(RESUME_PATH)) {
   process.exit(1);
 }
 
+// ─── 30-day dedup: fetch recently applied apps to avoid re-applying ───────────
+const DEDUP_DAYS = 30;
+const dedupSince = new Date(Date.now() - DEDUP_DAYS * 86400000).toISOString().slice(0, 10);
+const recentlyApplied = await sGet(
+  `applications?status=in.(applied,interview,phone_screen,final,hired)&application_date=gte.${dedupSince}&select=id,job_id`,
+);
+const recentAppliedJobIds = new Set(recentlyApplied.map((a) => a.job_id));
+
+// Also build company+title set for cross-application dedup (different job_id, same role at same company)
+const recentJobIds = [...new Set(recentlyApplied.map((a) => a.job_id).filter(Boolean))];
+let recentAppliedRoles = new Set();
+if (recentJobIds.length) {
+  const recentJobs = await sGet(`jobs?id=in.(${recentJobIds.join(",")})&select=id,title,company`);
+  recentAppliedRoles = new Set(
+    recentJobs.map(
+      (j) => `${(j.company || "").toLowerCase().trim()}|||${(j.title || "").toLowerCase().trim()}`,
+    ),
+  );
+}
+console.log(
+  `Dedup: ${recentlyApplied.length} applications in last ${DEDUP_DAYS} days (${recentAppliedRoles.size} unique company+role combos)`,
+);
+
 // Fetch interested applications (cover letter optional — forms may not require one)
 const applications = await sGet(
   `applications?status=eq.interested&select=id,job_id,status,cover_letter,match_score,priority,notes&order=match_score.desc&limit=${LIMIT}`,
@@ -2232,8 +2255,23 @@ const jobIds = [...new Set(applications.map((a) => a.job_id).filter(Boolean))];
 const jobs = await sGet(`jobs?id=in.(${jobIds.join(",")})&select=id,title,company,url,match_score`);
 const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
 
+// Helper: check if company+role was already applied to within 30 days
+function isDuplicate(job) {
+  if (!job) {
+    return false;
+  }
+  // Exact job_id match
+  if (recentAppliedJobIds.has(job.id)) {
+    return true;
+  }
+  // Same company + same title (case-insensitive)
+  const key = `${(job.company || "").toLowerCase().trim()}|||${(job.title || "").toLowerCase().trim()}`;
+  return recentAppliedRoles.has(key);
+}
+
 // Split: auto-submittable vs manual
 // Skip apps that already failed auto-submit (avoid infinite retries)
+// Skip apps where we already applied to same company+role in last 30 days
 const toSubmit = applications.filter((a) => {
   const j = jobMap[a.job_id];
   if (!j?.url || !detectPlatform(j.url) || (a.match_score || 0) < MIN_SCORE) {
@@ -2243,12 +2281,32 @@ const toSubmit = applications.filter((a) => {
   if (a.notes && /Auto-submit failed/i.test(a.notes)) {
     return false;
   }
+  // Skip if same company+role already applied within 30 days
+  if (isDuplicate(j)) {
+    return false;
+  }
   return true;
 });
 const manual = applications.filter((a) => {
   const j = jobMap[a.job_id];
+  if (isDuplicate(j)) {
+    return false;
+  }
   return !j?.url || !detectPlatform(j.url);
 });
+const dedupSkipped = applications.filter((a) => isDuplicate(jobMap[a.job_id]));
+if (dedupSkipped.length) {
+  console.log(
+    `Skipped ${dedupSkipped.length} duplicate(s) (same company+role applied within ${DEDUP_DAYS} days):`,
+  );
+  for (const a of dedupSkipped) {
+    const j = jobMap[a.job_id];
+    if (j) {
+      console.log(`  ⊘ ${j.title} @ ${j.company}`);
+    }
+  }
+  console.log("");
+}
 
 console.log(`Interested applications: ${applications.length}`);
 console.log(`Auto-submittable:        ${toSubmit.length} (Greenhouse/Lever/Ashby)`);
