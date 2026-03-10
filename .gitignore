@@ -130,3 +130,20 @@ openclaw.careerclaw.json
 openclaw.careerclaw.json.bak*
 apps/dashboard/.env.local
 supabase/.temp/
+
+# Personal profile data (never commit — use config/profile.json instead)
+skills/guillermo-profile/
+/applications/
+
+# Phase instructions (contain Supabase URLs and personal config)
+PHASE*_INSTRUCTIONS.md
+
+# Debug/test scripts (may contain hardcoded URLs or personal data)
+scripts/careerclaw/test-*.mjs
+scripts/careerclaw/test-*.sh
+
+# Backup files
+*.bak
+
+# Supabase CLI temp files
+supabase/.temp/

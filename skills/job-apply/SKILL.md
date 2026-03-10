@@ -1,13 +1,13 @@
 ---
 name: job-apply
-description: "Apply to jobs and submit freelance proposals. Generates tailored cover letters for full-time roles and proposals for Upwork/Fiverr gigs. Uses browser automation to fill application forms. Always reference guillermo-profile for personalization. Track all applications via jobclaw tracker."
+description: "Apply to jobs and submit freelance proposals. Generates tailored cover letters for full-time roles and proposals for Upwork/Fiverr gigs. Uses browser automation to fill application forms. Always reference config/profile.json for personalization. Track all applications via jobclaw tracker."
 ---
 
 # Job Application & Proposal Submission
 
 ## Prerequisites
 
-- Reference `guillermo-profile` for all personalization
+- Reference `config/profile.json` for all personalization
 - Browser tool for form submission
 - jobclaw tracker tool for tracking
 
@@ -62,7 +62,7 @@ See [references/proposal-templates.md](references/proposal-templates.md) for pro
 ### LinkedIn Easy Apply
 
 1. Click "Easy Apply" button
-2. Fill form fields using profile data from `guillermo-profile`
+2. Fill form fields using profile data from `config/profile.json`
 3. Upload resume if prompted (use latest version)
 4. Add cover letter if field is available
 5. Review all fields before submitting
@@ -71,7 +71,7 @@ See [references/proposal-templates.md](references/proposal-templates.md) for pro
 ### LinkedIn Standard Apply
 
 1. Click "Apply" to go to company's application page
-2. Fill in personal details from `guillermo-profile`
+2. Fill in personal details from `config/profile.json`
 3. Upload resume
 4. Paste generated cover letter into the appropriate field
 5. Answer any screening questions honestly using profile data

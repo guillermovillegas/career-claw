@@ -16,6 +16,8 @@ Job Search ──> Score & Filter ──> Generate Cover Letters ──> Auto-Su
 
 All personal data lives in `config/profile.json`. You configure once, the scripts do the rest.
 
+> **New here?** See [SETUP.md](SETUP.md) for detailed step-by-step setup instructions.
+
 ---
 
 ## Prerequisites
@@ -152,12 +154,11 @@ All scripts live in `scripts/careerclaw/`. The three primary scripts handle the 
 
 ### Fixing & Cleanup
 
-| Script                    | Purpose                                 |
-| ------------------------- | --------------------------------------- |
-| `fix-cover-letters.mjs`   | Regenerate failed/invalid cover letters |
-| `fix-greenhouse-urls.mjs` | Normalize Greenhouse job URLs           |
-| `fix-indeed-urls.mjs`     | Normalize Indeed job URLs               |
-| `fix-linkedin-urls.mjs`   | Normalize LinkedIn job URLs             |
+| Script                  | Purpose                                 |
+| ----------------------- | --------------------------------------- |
+| `fix-cover-letters.mjs` | Regenerate failed/invalid cover letters |
+
+One-time URL fix scripts live in `scripts/careerclaw/maintenance/`.
 
 ### Typical Daily Workflow
 
@@ -276,15 +277,45 @@ Every generated letter passes through:
 
 ---
 
-## Supported Platforms
+## Supported Job Boards & ATS Platforms
 
-| Platform   | Auto-Submit | Notes                                                |
-| ---------- | :---------: | ---------------------------------------------------- |
-| Greenhouse |    Full     | Email verification codes auto-fetched via Gmail IMAP |
-| Ashby      |    Full     | SPA forms, label-based field detection               |
-| Lever      |   Partial   | ~50% blocked by hCaptcha -- submit manually          |
-| iCIMS      |   Partial   | Multi-step forms, may need manual completion         |
-| Other      |     No      | Cover letters generated, submit manually             |
+### Job Discovery (Search)
+
+The `daily-search.sh` script finds jobs via Google Search API with `site:` operators. This avoids direct scraping and bot detection.
+
+| Platform   | Search Method               | Notes                                           |
+| ---------- | --------------------------- | ----------------------------------------------- |
+| LinkedIn   | `site:linkedin.com/jobs`    | Full-time roles; titles, remote, location       |
+| Greenhouse | `site:boards.greenhouse.io` | ATS board pages; high signal for tech companies |
+| Indeed     | `site:indeed.com/viewjob`   | Broad coverage; filtered by recency             |
+| Upwork     | `site:upwork.com/jobs`      | Freelance gigs; matched by tech stack           |
+| Fiverr     | `site:fiverr.com/requests`  | Buyer requests; matched by service category     |
+
+### Application Submission (Auto-Submit)
+
+The `submit-playwright.mjs` script fills and submits forms via headless Chromium.
+
+| ATS Platform | Auto-Submit | Detection Method     | Notes                                                |
+| ------------ | :---------: | -------------------- | ---------------------------------------------------- |
+| Greenhouse   |    Full     | URL: `greenhouse.io` | Email verification codes auto-fetched via Gmail IMAP |
+| Ashby        |    Full     | URL: `ashbyhq.com`   | SPA forms, label-based field detection               |
+| Lever        |   Partial   | URL: `lever.co`      | ~50% blocked by hCaptcha -- submit manually          |
+| iCIMS        |   Partial   | URL: `icims.com`     | Multi-step forms, may need manual completion         |
+| Workday      |     No      | --                   | Account-creation wall, not automatable               |
+| BambooHR     |     No      | --                   | Cover letters generated, submit manually             |
+| Other        |     No      | --                   | Cover letters generated, submit manually             |
+
+### Email Response Tracking
+
+The `track-email-responses.mjs` script classifies incoming emails from ATS platforms.
+
+| Email Domain         | Platform   | Classification                       |
+| -------------------- | ---------- | ------------------------------------ |
+| `greenhouse-mail.io` | Greenhouse | Rejection, interview, acknowledgment |
+| `*.lever.co`         | Lever      | Rejection, interview, assessment     |
+| `*.ashbyhq.com`      | Ashby      | Rejection, interview, offer          |
+| `*.icims.com`        | iCIMS      | Rejection, interview                 |
+| `*.gem.com`          | Gem        | Outreach, interview scheduling       |
 
 ---
 

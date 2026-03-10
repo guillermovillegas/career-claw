@@ -142,7 +142,7 @@ for i in $(seq 0 $((APP_COUNT - 1))); do
 
   # ─── Run the submission agent ────────────────────────────────────────────
   openclaw_agent --message "$(cat <<PROMPT
-You are submitting a job application for Jane Doe.
+You are submitting a job application. Load the applicant's profile from config/profile.json.
 
 APPLICATION ID: ${APP_ID}
 JOB ID: ${JOB_ID}
@@ -151,16 +151,8 @@ COMPANY: ${JOB_CO}
 URL: ${JOB_URL}
 PLATFORM: ${PLATFORM}
 
-GUILLERMO'S PROFILE:
-- First Name: Guillermo
-- Last Name: Villegas
-- Email: user.applies@example.com
-- Phone: (555) 123-4567
-- Location: Chicago, IL (remote preferred)
-- LinkedIn: https://www.linkedin.com/in/janedoe
-- GitHub: https://github.com/janedoe
-- Portfolio: https://myportfolio.vercel.app
-- Resume file: ${RESUME_PATH}
+APPLICANT PROFILE: Read from config/profile.json (first_name, last_name, email, phone, location, linkedin, github, website).
+Resume file: ${RESUME_PATH}
 
 COVER LETTER (paste this into the Cover Letter field verbatim):
 $(cat "$COVER_LETTER_FILE")
@@ -172,15 +164,8 @@ If the page has a Greenhouse, Lever, or Ashby embedded form, proceed to Step 2.
 If the URL redirects to a login wall (LinkedIn, etc.) that blocks access: skip to Step 3b.
 
 STEP 2 — Fill and submit the application form:
-Fill in ALL visible required fields:
-  - First Name: Guillermo
-  - Last Name: Villegas
-  - Email: user.applies@example.com
-  - Phone: 555-123-4567
-  - Location / City: Chicago, IL
-  - LinkedIn Profile: https://www.linkedin.com/in/janedoe
-  - GitHub: https://github.com/janedoe
-  - Website / Portfolio: https://myportfolio.vercel.app
+Fill in ALL visible required fields using values from config/profile.json:
+  - First Name, Last Name, Email, Phone, Location, LinkedIn, GitHub, Website
   - Cover Letter: [paste the COVER LETTER above verbatim]
   - Resume: upload the file at ${RESUME_PATH}
 

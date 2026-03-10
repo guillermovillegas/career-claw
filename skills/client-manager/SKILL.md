@@ -5,7 +5,7 @@ description: "Track active freelance clients, manage project milestones, log com
 
 # Client Manager
 
-Track and manage freelance client engagements for Jane Doe.
+Track and manage freelance client engagements. Uses config/profile.json for user identity.
 
 ## Client Record Structure
 

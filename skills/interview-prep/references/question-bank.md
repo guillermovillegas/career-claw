@@ -1,6 +1,6 @@
 # Question Bank
 
-Common interview questions with tailored answers for Jane Doe. Answers are frameworks -- adapt the specific details to the company and role.
+Common interview questions with tailored answers. Customize using config/profile.json. Answers are frameworks -- adapt the specific details to the company and role.
 
 ---
 

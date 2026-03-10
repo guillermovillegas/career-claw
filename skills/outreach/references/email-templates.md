@@ -1,6 +1,6 @@
 # Email Templates
 
-Ready-to-customize templates. Replace bracketed placeholders with specifics before sending. Always reference the `guillermo-profile` skill for up-to-date credentials and metrics.
+Ready-to-customize templates. Replace bracketed placeholders with specifics before sending. Always reference the `config/profile.json` skill for up-to-date credentials and metrics.
 
 ---
 
@@ -15,7 +15,7 @@ I saw the [Role Title] listing at [Company] and it caught my attention -- [speci
 I'd love to learn more about what you're building. Would you have 15 minutes this week for a quick call?
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -32,7 +32,7 @@ I noticed you're hiring for [Role]. My background in [2-3 relevant skills] maps 
 Open to a brief call whenever works for you.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -49,7 +49,7 @@ I've been building in a similar space -- most recently shipped a multi-tenant Sa
 If you're ever looking for a product-minded engineer who can ship fast (3.28M lines of code in 2025, not a typo), I'd love to chat.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -66,7 +66,7 @@ For context, I recently built a complete solar SaaS platform (CRM, operations, a
 I could put together a quick proposal for [specific deliverable]. Would a 15-minute call work this week?
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -81,7 +81,7 @@ Just following up on my note from [day]. Wanted to share that [new piece of valu
 Still very interested in [role/opportunity]. Happy to answer any questions or jump on a quick call.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -96,7 +96,7 @@ I know things get busy -- just wanted to circle back briefly. I believe my exper
 Happy to provide references, work samples, or answer any questions. No pressure at all.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -111,7 +111,7 @@ Wanted to check in one last time on [role/opportunity]. If the timing isn't righ
 Wishing you and the [Company] team all the best.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -128,7 +128,7 @@ It reinforced my excitement about [Company] and the [role]. The way you're appro
 Looking forward to [next step they mentioned]. Please don't hesitate to reach out if you need anything from my end.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -145,7 +145,7 @@ I'd love to hear about what you're working on at [Company]. No agenda, just alwa
 Would a 15-minute call work sometime in the next couple weeks?
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -162,4 +162,4 @@ Would you be comfortable making a brief introduction? I'm happy to send you a sh
 Totally understand if it's not the right time. Appreciate you either way.
 
 Best,
-Guillermo
+[Your Name]

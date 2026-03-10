@@ -274,38 +274,23 @@ function ApplicationFormFields({
   // Collect all fields that were filled in the application
   const fields: { label: string; value: string; category: string }[] = [];
 
-  // Contact / identity fields (always present for submitted apps)
+  // Contact / identity fields — loaded from config/profile.json at build time
+  // (These are placeholders; the actual values come from the user's profile config)
   if (app.status !== "interested") {
     fields.push(
-      { label: "Full Name", value: "Jane Doe", category: "Contact" },
-      {
-        label: "Email",
-        value: "user.applies@example.com",
-        category: "Contact",
-      },
-      { label: "Phone", value: "(555) 123-4567", category: "Contact" },
-      { label: "Location", value: "Chicago, IL", category: "Contact" },
+      { label: "Full Name", value: "From profile.json", category: "Contact" },
+      { label: "Email", value: "From profile.json", category: "Contact" },
+      { label: "Phone", value: "From profile.json", category: "Contact" },
+      { label: "Location", value: "From profile.json", category: "Contact" },
     );
   }
 
   // Online profiles
   if (app.status !== "interested") {
     fields.push(
-      {
-        label: "LinkedIn",
-        value: "linkedin.com/in/janedoe",
-        category: "Profiles",
-      },
-      {
-        label: "GitHub",
-        value: "github.com/janedoe",
-        category: "Profiles",
-      },
-      {
-        label: "Website",
-        value: "myportfolio.vercel.app",
-        category: "Profiles",
-      },
+      { label: "LinkedIn", value: "From profile.json", category: "Profiles" },
+      { label: "GitHub", value: "From profile.json", category: "Profiles" },
+      { label: "Website", value: "From profile.json", category: "Profiles" },
     );
   }
 
@@ -319,7 +304,7 @@ function ApplicationFormFields({
   } else if (app.status !== "interested") {
     fields.push({
       label: "Resume",
-      value: "gv_resume.pdf",
+      value: "resume.pdf",
       category: "Documents",
     });
   }
@@ -336,17 +321,17 @@ function ApplicationFormFields({
     });
   }
 
-  // Work authorization
+  // Work authorization — from config/profile.json
   if (app.status !== "interested") {
     fields.push(
       {
         label: "Work Authorization",
-        value: "US Citizen",
+        value: "From profile.json",
         category: "Eligibility",
       },
       {
         label: "Sponsorship Required",
-        value: "No",
+        value: "From profile.json",
         category: "Eligibility",
       },
     );

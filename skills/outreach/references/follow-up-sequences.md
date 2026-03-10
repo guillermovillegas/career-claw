@@ -21,7 +21,7 @@ I submitted my application for [Role] a few days ago and wanted to make sure it 
 I'd welcome the chance to discuss how my background in [key area] could support what you're building.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -38,7 +38,7 @@ I know your inbox is full -- just a brief follow-up on my application for [Role]
 Happy to provide any additional context, references, or work samples. Also totally understand if the timing doesn't work.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -55,7 +55,7 @@ Checking in one last time on the [Role] position. If the role has been filled or
 I'd be glad to stay in touch for future opportunities. Wishing you and the team the best.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -76,7 +76,7 @@ Following up on the proposal I sent over. Happy to answer any questions or adjus
 One thing I forgot to mention -- I built a similar [type of system] for [client/project] that [specific result]. I can share a quick demo if that would be helpful in evaluating the approach.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -93,7 +93,7 @@ Wanted to check in on the proposal. If you've decided to go a different directio
 If you'd like to revisit this later or have a different project in mind, I'm always reachable.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -114,7 +114,7 @@ Great meeting you at [event] / Great chatting on [platform]. I really liked your
 I'd enjoy continuing the conversation. If you're ever up for a coffee or quick call, I'm easy to reach.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -131,7 +131,7 @@ Came across [article, tool, event, idea] and thought of our conversation about [
 Hope things are going well at [Company]. Always happy to trade notes.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 
@@ -163,7 +163,7 @@ Just wanted to check in on next steps for the [Role] process. I'm flexible on ti
 Looking forward to hearing from you.
 
 Best,
-Guillermo
+[Your Name]
 
 ---
 

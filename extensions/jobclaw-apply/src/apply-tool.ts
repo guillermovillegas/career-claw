@@ -11,142 +11,51 @@ function stringEnum<T extends string>(values: T[], opts?: { description?: string
   return Type.Unsafe<T>({ type: "string", enum: values, ...opts });
 }
 
-// Guillermo's profile data embedded for cover letter/proposal generation
-// Source: /Users/g/development/career-claw/gv_resume.pdf
-const RESUME_PDF_PATH = "/Users/g/development/career-claw/gv_resume.pdf";
+// Profile data loaded from config/profile.json at runtime.
+// The apply tool reads from the shared profile config so no PII is hardcoded here.
+// See config/profile.example.json for the expected schema.
+import { readFileSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
-const PROFILE = {
-  name: "Jane Doe",
-  title: "Product Leader and AI Assisted Engineer",
-  subtitle: "AI, SaaS, & B2B Platforms",
-  location: "Chicago, IL",
-  phone: "(555) 123-4567",
-  email: "user@example.com",
-  portfolio: "myportfolio.vercel.app",
-  linkedin: "linkedin.com/in/janedoe",
-  resumePath: RESUME_PDF_PATH,
-  yearsExperience: 10,
-  education: "B.S. Neurobiology, University of Iowa (2016)",
-  summary:
-    "Results-driven product leader with 10 years scaling B2B SaaS solutions across IoT, AI, hospitality, FinTech, and emerging technologies. Delivered ~50 repositories, 1M+ lines of code, and ~3000+ commits. Expert in Computer Vision, Google Gemini AI integration, and full-stack AI assisted development.",
-  experience: [
-    {
-      company: "Levee Labs Inc.",
-      role: "Co-Founder & Chief Product Officer",
-      period: "Sep 2023 - Present",
-      highlights: [
-        "Built AI-powered B2B SaaS hospitality platform with proprietary computer vision and audio AI winning multiple industry awards in 2025",
-        "Delivered +90% gross margin swing over three major initiatives through roadmap prioritization and infrastructure optimization",
-        "Led product development for modular management portal enabling facility operations, inspections, ticketing, analytics, and RBAC across multi-property hospitality networks",
-        "Owned product strategy for mobile app achieving 60% inspection time reduction during 605-room Marriott pilot",
-        "Managed ML infrastructure roadmap including YOLO and transformer based computer vision models with automated FinOps scheduling",
-        "Built operational BI platform (Next.js/React/Recharts) with KPI dashboards and executive reporting for multi-location B2B SaaS clients",
-      ],
-    },
-    {
-      company: "Axiom Law",
-      role: "Technical Product Manager II",
-      period: "Mar 2022 - Dec 2023",
-      highlights: [
-        "Launched Opportunity Feed achieving 75% activation in 30 days, unlocking new revenue streams",
-        "Built 50+ executive dashboards driving $100K+ CLV gains through strategic analytics",
-        "Streamlined legal ops workflows through automation, reducing reporting overhead by 70%",
-      ],
-    },
-    {
-      company: "The Chamberlain Group",
-      role: "Product Manager, Emerging Products/Residential Accessories",
-      period: "Sep 2020 - Mar 2022",
-      highlights: [
-        "Drove $250M+ hardware smart-home product portfolio delivering double-digit IRR improvements",
-        "Led partnership with Ring achieving +68% IRR transformation from initial -11% baseline",
-        "Oversaw roadmap, partnerships, and technical prioritization for access control and connected devices",
-      ],
-    },
-    {
-      company: "2U",
-      role: "Product Management Instructor",
-      period: "Jan 2021 - Apr 2022",
-      highlights: [
-        "Designed and delivered curriculum for 20+ students, achieving top-quartile ratings",
-      ],
-    },
-  ],
-  keyProjects: [
-    "Levee - Hospitality Operations B2B SaaS (Management Portal, Mobile Platform, ML Infrastructure, Analytics)",
-    "SunrAI & SoCap - Solar Vertical SaaS (Core Platform, AI CRM with Gemini, Mobile Operations)",
-    "APACT - Enterprise Trading B2B SaaS (OTC Trading Platform, 6-role RBAC, Compliance Systems)",
-  ],
-  highlights: [
-    "Co-Founder & CPO of Levee Labs - Global Startup Pitch Winner 2025",
-    "Built computer vision systems with YOLO/RT-DETR deployed across 10,000+ hotel rooms",
-    "Delivered +90% gross margin swing through roadmap prioritization and infrastructure optimization",
-    "60% inspection time reduction during Marriott pilot — now deployed across 10,000+ rooms",
-    "$250M+ smart-home product portfolio at Chamberlain Group with double-digit IRR improvements",
-    "+68% IRR transformation on Ring partnership from -11% baseline",
-    "50+ executive dashboards driving $100K+ CLV gains at Axiom Law",
-    "Built entire vertical SaaS platforms (solar, trading, hospitality) end-to-end",
-  ],
-  skills: {
-    product: [
-      "Product Strategy",
-      "Roadmapping",
-      "User Research",
-      "Feature Prioritization",
-      "Cross-functional Leadership",
-      "Go-to-Market Strategy",
-      "B2B SaaS Metrics",
-      "OKRs",
-    ],
-    technical: [
-      "TypeScript",
-      "React",
-      "Next.js",
-      "Node.js",
-      "Python",
-      "React Native/Expo",
-      "Supabase",
-      "PostgreSQL",
-      "Docker",
-      "GCP",
-      "Kubernetes",
-      "SQL",
-      "REST/GraphQL APIs",
-      "Claude Code",
-    ],
-    ai: [
-      "LLM Integration",
-      "Agentic Workflow Development",
-      "Computer Vision (YOLO/RT-DETR)",
-      "RAG Systems",
-      "LangChain/LangGraph",
-      "Google Gemini",
-      "Vertex AI",
-      "Claude/Anthropic",
-      "MLOps",
-      "Inference Serving (GCP/Groq)",
-      "Fine-Tuning",
-    ],
-    b2b: [
-      "Multi-tenant Platforms",
-      "Enterprise Security",
-      "Compliance (KYC/AML)",
-      "RBAC/IAM",
-      "Audit Systems",
-      "FinOps",
-    ],
-  },
-  awards: [
-    "PhocusWire Global Startup Pitch Award Winner (North America) 2025",
-    "PhocusWire Hot 25 Travel Startups for 2025",
-    "People's Choice Award at 1871 AI Innovation Lab Pitch Expo",
-    "TechOvation AI Award Nominee",
-    "Skift 2025 Idea Award Finalist",
-    "Chicago Product Management Association Organizer (7+ years)",
-    "BuiltInChicago Top 50 Startups to Watch (2018)",
-    "Newsweek Top 10 (#7) Online Outdoor Shop (2020) - Catch Co.",
-  ],
-};
+const __applyDirname = dirname(fileURLToPath(import.meta.url));
+const PROFILE_PATH = join(__applyDirname, "../../../../config/profile.json");
+
+interface ProfileData {
+  personal: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    location: string;
+  };
+  online: { linkedin: string; github: string; website: string };
+  professional: {
+    current_company: string;
+    current_title: string;
+    years_total: string;
+    resume_filename: string;
+    work_authorization: string;
+  };
+  cover_letter?: { background_bullets?: string[]; role_matching?: string[]; banned_words?: string };
+}
+
+function loadProfileData(): ProfileData {
+  return JSON.parse(readFileSync(PROFILE_PATH, "utf8")) as ProfileData;
+}
+
+function getProfileCompat() {
+  const p = loadProfileData();
+  return {
+    name: `${p.personal.first_name} ${p.personal.last_name}`,
+    portfolio: p.online.website,
+    yearsExperience: parseInt(p.professional.years_total, 10) || 5,
+    highlights: p.cover_letter?.background_bullets ?? [],
+    skills: { product: [] as string[], technical: [] as string[], ai: [] as string[] },
+  };
+}
+
+const PROFILE = getProfileCompat();
 
 export function createApplyTool(_api: OpenClawPluginApi) {
   return {
@@ -154,7 +63,7 @@ export function createApplyTool(_api: OpenClawPluginApi) {
     label: "CareerClaw Apply",
     description:
       "Generate tailored cover letters for job applications and proposals for freelance gigs. " +
-      "Uses Guillermo's profile data to create personalized, natural-sounding content. " +
+      "Uses profile data from config/profile.json to create personalized, natural-sounding content. " +
       "Returns the generated text for review before submission.",
     parameters: Type.Object({
       action: stringEnum(["generate_cover_letter", "generate_proposal", "tailor_resume_summary"], {
@@ -254,7 +163,7 @@ FORMAT — STRICT:
 - 3-5 sentences. Two short paragraphs max. 100-160 words total.
 - Paragraph 1 (2-3 sentences): Open with one hard metric or achievement directly relevant to this role. Then connect it to ${company} — name something specific about their product, team, or challenge. Make the connection concrete, not generic.
 - Paragraph 2 (1-2 sentences): One more supporting proof point OR a brief statement of what you'd bring to this specific role. Close with a professional single sentence — no fluff, no call-to-action clichés.
-- Sign off: Jane Doe
+- Sign off: ${PROFILE.name}
 
 BANNED WORDS — never use any of these:
 "excited", "passionate", "thrilled", "love to", "would love", "hope to", "looking forward",
@@ -270,16 +179,15 @@ ALWAYS: Active voice. Past tense for achievements. Specific numbers. Name the co
 EXAMPLE STYLE (do not copy — write fresh):
 "Hi [name],
 
-At Levee I shipped a computer vision system to 92%+ accuracy across 10,000+ hotel rooms, cutting inspection time 60% during a Marriott pilot. ${company}'s work on [specific product/challenge] is the same class of problem — production AI with measurable ops impact.
+[Opening with a specific achievement relevant to the role and connecting it to ${company}.]
 
-I've also built the full-stack SaaS layer: multi-tenant portals, real-time analytics, and RBAC in Next.js/Supabase at scale. Happy to share specifics on either front.
+[Second proof point showing range. Close with a professional single sentence.]
 
-Jane Doe"`,
+${PROFILE.name}"`,
     matched_highlights: matchedHighlights,
     matched_skills: matchedSkills,
     requirements_detected: requirements,
-    resume_path: RESUME_PDF_PATH,
-    resume_filename: "Guillermo_Villegas_Resume.pdf",
+    resume_filename: loadProfileData().professional.resume_filename || "resume.pdf",
   };
 }
 

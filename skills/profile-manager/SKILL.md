@@ -1,6 +1,6 @@
 ---
 name: profile-manager
-description: "Create and maintain professional profiles on Upwork, Fiverr, and LinkedIn. Update skills, portfolio items, work samples, and profile descriptions. Use when setting up, updating, or optimizing freelance platform profiles. Reference guillermo-profile for content."
+description: "Create and maintain professional profiles on Upwork, Fiverr, and LinkedIn. Update skills, portfolio items, work samples, and profile descriptions. Use when setting up, updating, or optimizing freelance platform profiles. Reference config/profile.json for content."
 ---
 
 # Profile Manager
@@ -10,7 +10,7 @@ Create, update, and optimize professional profiles across freelance and job plat
 ## Prerequisites
 
 - Browser tool for navigating platform settings
-- Reference `guillermo-profile` for all content and data
+- Reference `config/profile.json` for all content and data
 - screenshotter tool for capturing portfolio screenshots (when available)
 
 ## Upwork Profile
@@ -18,7 +18,7 @@ Create, update, and optimize professional profiles across freelance and job plat
 ### Setup and Updates
 
 1. Navigate to `upwork.com/freelancers/settings/profile`
-2. Update each section using data from `guillermo-profile`
+2. Update each section using data from `config/profile.json`
 
 Key sections to maintain:
 
@@ -28,8 +28,8 @@ Key sections to maintain:
 - **Skills:** Top 15 most relevant to current demand
 - **Portfolio:** 4-6 projects with screenshots, descriptions, and tech stacks
 - **Availability:** 20-30 hrs/week (update based on current capacity)
-- **Employment history:** Sync with resume from `guillermo-profile`
-- **Education:** B.S. Neurobiology, University of Iowa, 2016
+- **Employment history:** Sync with resume from `config/profile.json`
+- **Education:** (from profile.json)
 
 See [references/upwork-profile-guide.md](references/upwork-profile-guide.md) for optimized headline, overview text, skills list, and portfolio descriptions.
 
@@ -68,7 +68,7 @@ See [references/fiverr-gig-guide.md](references/fiverr-gig-guide.md) for complet
 
 1. Navigate to `fiverr.com/users/[username]/manage_profile`
 2. Update:
-   - **Display name:** Guillermo V.
+   - **Display name:** (from profile.json)
    - **Professional headline:** Same style as Upwork title
    - **Description:** Shorter version of Upwork overview (under 600 characters)
    - **Languages:** English (Native)
@@ -79,23 +79,23 @@ See [references/fiverr-gig-guide.md](references/fiverr-gig-guide.md) for complet
 
 ### Sections to Maintain
 
-1. Navigate to `linkedin.com/in/janedoe/edit/`
+1. Navigate to your LinkedIn profile edit page
 2. Update these sections:
 
 - **Headline:** Concise value proposition (under 220 characters)
   - Example: "Product Leader & AI Engineer | Built CV Systems at 92%+ Accuracy | Next.js/React/TypeScript | Award-Winning Startup Co-Founder"
 - **About:** 3-4 paragraph professional summary with metrics
-- **Experience:** Keep in sync with `guillermo-profile` resume
+- **Experience:** Keep in sync with `config/profile.json` resume
 - **Skills:** Pin top 3, maintain full list of 50
 - **Featured:** Pin 2-3 top portfolio pieces or articles
 - **Projects:** Link to live portfolio items
-- **Education:** B.S. Neurobiology, University of Iowa, 2016
+- **Education:** (from profile.json)
 
 ### LinkedIn-Specific Tips
 
 - Use relevant keywords throughout for search visibility
 - Keep "Open to Work" settings updated (visible to recruiters only)
-- Set job preferences: Senior+, Remote/Chicago, target roles from `guillermo-profile`
+- Set job preferences: Senior+, Remote/Chicago, target roles from `config/profile.json`
 - Endorse skills strategically and request endorsements for top skills
 
 ## Portfolio Screenshot Capture

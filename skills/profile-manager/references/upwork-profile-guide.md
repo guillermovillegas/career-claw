@@ -87,7 +87,7 @@ Executive reporting and KPI dashboard platform with interactive data visualizati
 **Description:**
 3.28M lines of code across 132 projects in 2025, ranking top 0.01% globally. Demonstrates extreme shipping velocity across full-stack web, AI/ML, mobile, and infrastructure projects.
 
-**Link:** github.com/janedoe
+**Link:** (your GitHub profile URL from config/profile.json)
 
 **Key metric:** 3.28M lines, 132 projects, 3000+ commits
 

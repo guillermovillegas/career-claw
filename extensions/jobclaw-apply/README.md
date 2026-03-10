@@ -1,6 +1,6 @@
 # jobclaw-apply
 
-CareerClaw content generation extension for OpenClaw. Generates tailored cover letters, freelance proposals, and resume summaries using Guillermo's embedded profile data.
+CareerClaw content generation extension for OpenClaw. Generates tailored cover letters, freelance proposals, and resume summaries using the user's profile data from config/profile.json.
 
 ## Tool
 
@@ -33,7 +33,7 @@ CareerClaw content generation extension for OpenClaw. Generates tailored cover l
 ## How It Works
 
 1. Extracts key requirements from the job/project description
-2. Matches against Guillermo's profile highlights, skills, and awards
+2. Matches against the user's profile highlights, skills, and awards
 3. Returns a structured prompt with matched context for the agent to generate final content
 4. Agent uses the prompt + context to produce natural, personalized output
 

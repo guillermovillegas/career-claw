@@ -18,8 +18,8 @@ logfile        ~/.msmtp.log
 account        levee
 host           smtp.gmail.com
 port           587
-from           user@example.com
-user           user@example.com
+from           your-email@example.com
+user           your-email@example.com
 password       YOUR_APP_PASSWORD
 
 account default : levee
@@ -40,7 +40,7 @@ chmod 600 ~/.msmtprc
 ## Test
 
 ```bash
-echo "Test from CareerClaw" | msmtp --from="user@example.com" your-test@email.com
+echo "Test from CareerClaw" | msmtp --from="your-email@example.com" your-test@email.com
 ```
 
 ## How it works

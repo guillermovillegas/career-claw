@@ -5,19 +5,19 @@ description: "Prepare for job interviews with company research, likely questions
 
 # Interview Preparation
 
-Comprehensive interview prep workflow for Jane Doe. Covers company research, question preparation, STAR stories, and talk tracks.
+Comprehensive interview prep workflow. Load profile from config/profile.json. Covers company research, question preparation, STAR stories, and talk tracks.
 
 ## Detailed References
 
 Load these files for deeper content as needed:
 
-- **STAR stories:** See [references/star-stories.md](references/star-stories.md) for prepared Situation-Task-Action-Result stories from Guillermo's experience
+- **STAR stories:** See [references/star-stories.md](references/star-stories.md) for prepared Situation-Task-Action-Result stories from the applicant's experience
 - **Project talk tracks:** See [references/talk-tracks.md](references/talk-tracks.md) for 45-90 second narratives on key projects
 - **Common questions:** See [references/question-bank.md](references/question-bank.md) for tailored answers to frequent interview questions
 
 ## External Prep Assets
 
-- **Canary Technologies prep:** `/Users/g/development/interview-prep-canary/` -- Full example of deep interview prep including executive memo, talk track, behavioral prep, and technical portfolio. Use as a template for preparing for new companies.
+- **Example prep:** See external interview prep materials for template on deep company research.
 
 ## Company Research Workflow
 
@@ -84,7 +84,7 @@ See [references/star-stories.md](references/star-stories.md) for the full set of
 
 ### System Design
 
-Practice these patterns from Guillermo's actual work:
+Practice these patterns from the user's actual work:
 
 - Multi-tenant SaaS with RLS (SunrAI pattern)
 - Real-time inspection system with CV inference (Levee pattern)

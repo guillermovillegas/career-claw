@@ -11,7 +11,7 @@ import http from "http";
 import https from "https";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { buildCoverLetterPrompt } from "../../config/load-profile.mjs";
+import { buildCoverLetterPrompt, getCoverLetterConfig } from "../../config/load-profile.mjs";
 import { validateCoverLetterForJob, MIN_CL_LENGTH } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,6 +40,14 @@ const OLLAMA_MODEL = "qwen3:8b";
 
 const GEMINI_API_KEY = envVars.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = "gemini-3.1-flash-lite-preview";
+
+// Build name-stripping regex from profile (e.g. "Jane Doe" → /\n\s*Jane\s*(Doe)?\s*$/i)
+const _clCfg = getCoverLetterConfig();
+const _nameParts = _clCfg.fullName.split(/\s+/);
+const _nameRegex = new RegExp(
+  `\\n\\s*${_nameParts[0]}\\s*(${_nameParts.slice(1).join("\\s+")})?\\s*$`,
+  "i",
+);
 
 // ─── Parse args ──────────────────────────────────────────────────────────────
 let LIMIT = 300;
@@ -287,7 +295,7 @@ function repairLetter(letter) {
       /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Warmly|Cheers|Thank you|Thanks|Respectfully),?\s*\n.*$/is,
       "",
     )
-    .replace(/\n\s*Guillermo\s*(Villegas)?\s*$/i, "")
+    .replace(_nameRegex, "")
     .replace(/\baligns with\b/gi, "maps to")
     .replace(/\binnovative\b/gi, "effective")
     .replace(/\bexcited\b/gi, "prepared")

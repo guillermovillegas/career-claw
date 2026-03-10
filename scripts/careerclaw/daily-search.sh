@@ -64,7 +64,7 @@ Search queries (run via web_search):
 
 SCORING (required):
 Skills(0-40) + Seniority(0-20) + Industry(0-15) + Comp(0-15) + Location(0-10) + full-time(+10) + remote(+5)
-Guillermo's stack: TypeScript, React, Next.js, Supabase, AI/ML — score accordingly.
+Applicant's stack: TypeScript, React, Next.js, Supabase, AI/ML — score accordingly.
 
 For each result scoring 70+:
 - Call jobclaw create_job with ALL fields:
@@ -124,7 +124,7 @@ CRITICAL URL RULE:
 
 SCORING (required):
 Skills(0-40) + Seniority(0-20) + Industry(0-15) + Comp(0-15) + Location(0-10) + full-time(+10) + remote(+5)
-Guillermo's stack: TypeScript, React, Next.js, Supabase, AI/ML — score accordingly.
+Applicant's stack: TypeScript, React, Next.js, Supabase, AI/ML — score accordingly.
 
 For each result with VALID URL scoring 70+:
 - Call jobclaw create_job with:

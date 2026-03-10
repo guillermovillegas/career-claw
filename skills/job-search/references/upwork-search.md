@@ -22,7 +22,7 @@ https://www.upwork.com/nx/search/jobs/?q=QUERY&sort=recency
 | `proposals`        | Proposal range    | `0-4`, `5-9`, `10-14`, `15-19`                       |
 | `duration_v3`      | Project length    | `weeks`, `months`, `semester` (6+ months)            |
 
-### Category Codes for Guillermo
+### Category Codes for the User
 
 - Web Development: `531770282584862721`
 - AI & Machine Learning: `531770282589057033`
@@ -103,7 +103,7 @@ Click into a listing to get:
 
 ## Key Skills to Search For
 
-Primary (highest match for Guillermo):
+Primary (highest match for the user):
 
 - React, Next.js, TypeScript, Node.js
 - AI/ML, LLM integration, Computer Vision

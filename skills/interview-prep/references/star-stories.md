@@ -1,6 +1,6 @@
 # STAR Stories
 
-Prepared Situation-Task-Action-Result stories from Jane Doe's experience. Each story is designed to be delivered in 60-90 seconds.
+Prepared Situation-Task-Action-Result stories. Customize with your own experience data. Each story is designed to be delivered in 60-90 seconds.
 
 ---
 

@@ -13,7 +13,7 @@ At Levee I built a computer vision system to 92%+ accuracy across 10,000+ hotel 
 
 I've since extended that into full-stack AI platforms: multi-tenant SaaS, real-time dashboards, and LLM integrations in Next.js/Supabase. Both the ML and the product layer are areas I can contribute to from day one.
 
-Jane Doe
+[Your Name]
 ```
 
 ## Template 2: Product Manager Roles
@@ -25,7 +25,7 @@ At Chamberlain Group I managed a $250M smart-home portfolio and turned a Ring pa
 
 [Company]'s work on [specific initiative] is the kind of zero-to-one and scale problem I've run before. I understand both the product strategy and the engineering tradeoffs well enough to own either side.
 
-Jane Doe
+[Your Name]
 ```
 
 ## Template 3: Full-Stack Engineer Roles
@@ -37,7 +37,7 @@ In 2025 I shipped 3.28M lines of production code across 132 projects — multi-t
 
 [Company]'s [specific challenge] is close to what I've solved at Levee and SunrAI. I can get into the existing codebase quickly and contribute to architecture decisions, not just ticket work.
 
-Jane Doe
+[Your Name]
 ```
 
 ## Template 4: Startup / Founding Engineer Roles
@@ -47,7 +47,7 @@ Hi [name],
 
 As CPO at Levee I built an AI hospitality platform from first commit to PhocusWire Global Pitch Winner and HITEC $25K AI competition winner. Full stack, zero-to-one, 92%+ CV accuracy, +90% margin swing. [Company]'s stage is where I thrive.
 
-Jane Doe
+[Your Name]
 ```
 
 ## Customization Checklist

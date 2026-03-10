@@ -32,7 +32,7 @@ Focus on requests matching these categories:
 Skip requests that:
 
 - Have budgets under $200 for development work
-- Require technologies outside Guillermo's stack
+- Require technologies outside the user's stack
 - Have unrealistic timelines (e.g., full SaaS in 2 days)
 - Are from buyers with no previous orders and vague descriptions
 
@@ -43,7 +43,7 @@ To understand market demand and position gigs effectively:
 1. Navigate to `fiverr.com/search/gigs?query=QUERY`
 2. Review top sellers in relevant categories
 3. Note: pricing tiers, delivery times, order queues, review counts
-4. Use this data to price and position Guillermo's gigs competitively
+4. Use this data to price and position the user's gigs competitively
 
 ### Relevant Search Queries
 
@@ -59,9 +59,9 @@ To understand market demand and position gigs effectively:
 When responding to a buyer request:
 
 1. Read the full request carefully
-2. Match to Guillermo's relevant experience
+2. Match to the user's relevant experience
 3. Draft a concise offer (see `job-apply` skill for proposal templates)
-4. Set appropriate pricing (reference `guillermo-profile` for rate guidelines)
+4. Set appropriate pricing (reference `config/profile.json` for rate guidelines)
 5. Select the most relevant gig to attach to the offer
 6. Submit the offer
 

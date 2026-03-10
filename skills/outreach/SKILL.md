@@ -1,6 +1,6 @@
 ---
 name: outreach
-description: "Compose and send professional emails for job outreach, follow-ups, networking, and cold pitches. Uses browser automation to send via Gmail (user.applies@example.com). Use for reaching out to recruiters, following up on applications, cold-emailing potential clients, or networking."
+description: "Compose and send professional emails for job outreach, follow-ups, networking, and cold pitches. Uses browser automation to send via Gmail (configured in config/profile.json). Use for reaching out to recruiters, following up on applications, cold-emailing potential clients, or networking."
 ---
 
 # Email Outreach & Follow-ups
@@ -9,8 +9,8 @@ Compose and send natural-sounding professional emails using Gmail via browser au
 
 ## Email Account
 
-- From: user.applies@example.com
-- Display Name: Jane Doe
+- From: (configured in config/profile.json — `personal.email`)
+- Display Name: (configured in config/profile.json — `personal.first_name` + `personal.last_name`)
 - Send via: Gmail web interface using the browser tool
 
 ## Composition Guidelines
@@ -103,7 +103,7 @@ Structure:
 ## Sending Process
 
 1. Compose email text
-2. Present draft to Guillermo for approval
+2. Present draft to the user for approval
 3. After approval, send via Gmail browser automation:
 
 ### Gmail Compose Workflow
@@ -134,7 +134,7 @@ Step 5: Fill the compose form
 Step 6: Take snapshot to verify content before sending
   browser:snapshot snapshotFormat="ai"
 
-Step 7: Click Send (ONLY after Guillermo approves)
+Step 7: Click Send (ONLY after the user approves)
   browser:act request={ kind: "click", ref: <send_button_ref> }
 
 Step 8: Wait for confirmation
@@ -143,8 +143,8 @@ Step 8: Wait for confirmation
 
 ### Important
 
-- ALWAYS show the draft to Guillermo and get explicit approval before clicking Send
-- If Gmail is not logged in, navigate to login and let Guillermo enter credentials
+- ALWAYS show the draft to the user and get explicit approval before clicking Send
+- If Gmail is not logged in, navigate to login and let the user enter credentials
 - After sending, log the email in the jobclaw tracker
 
 ## Rate Limits

@@ -41,7 +41,7 @@ STEP 2 — SCREENSHOT THE JOB POSTING:
 
 STEP 3 — GENERATE COVER LETTER:
 - Use jobclaw-apply tool (generate_cover_letter action)
-- Email to use for all applications: user.applies@example.com
+- Email to use for all applications: (from config/profile.json)
 
 STEP 4 — SAVE RECORDS:
 - jobclaw create_job: title, company, location, work_mode, job_type, platform, match_score, url, description
@@ -53,7 +53,7 @@ $SUBMIT_FLAG
 - After submission: take a screenshot of the confirmation page
 - Save to: $SCREENSHOT_DIR/confirm-${TIMESTAMP}.png
 - Update the application notes with the confirmation screenshot path
-- Note: confirmation email should arrive at user.applies@example.com
+- Note: confirmation email should arrive at the email configured in config/profile.json
 
 STEP 6 — LOG:
 - jobclaw log_automation: action_type='application_submit', platform, success=true, details including screenshot paths

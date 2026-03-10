@@ -20,7 +20,7 @@ https://www.linkedin.com/jobs/search/?keywords=QUERY&location=LOCATION&FILTERS
 | Job type         | `f_JT`   | `F` (full-time), `C` (contract), `P` (part-time), `T` (temporary)                                |
 | Sort by          | `sortBy` | `R` (relevant), `DD` (date)                                                                      |
 
-### Example Searches for Guillermo
+### Example Searches for the User
 
 AI Product Manager, Remote, Senior+, Past Week:
 

@@ -23,25 +23,20 @@ echo ""
 # Upwork profile setup
 echo "[Upwork] Setting up profile..."
 openclaw_agent --message "$(cat <<PROMPT
-Set up Guillermo's Upwork profile using browser automation.
+Set up Upwork profile using browser automation.
+Load profile data from config/profile.json for personal details.
 
 Reference: skills/profile-manager/references/upwork-profile-guide.md
 
 Steps:
 1. Navigate to upwork.com/freelancers/settings/profile
-2. Set headline: "AI-Powered Platform Developer | Next.js/React/TypeScript | Computer Vision | Award-Winning Product Leader"
+2. Set headline from profile.json or upwork-profile-guide.md
 3. Set overview from the upwork-profile-guide.md (3 paragraphs)
-4. Add top 15 skills: React, Next.js, TypeScript, Node.js, AI/ML, Computer Vision, Supabase, PostgreSQL, Python, Full-Stack Development, Product Management, React Native, Tailwind CSS, Docker, GCP
-5. Set hourly rate: \$175/hr
+4. Add top 15 skills from profile.json
+5. Set hourly rate from profile.json
 6. Set availability: 20-30 hours/week
-7. Add portfolio items with screenshots from $PORTFOLIO_IMAGES:
-   - Levee AI Platform (levee-1.png, Levee-2.png, Levee-3.png)
-   - SunrAI Solar CRM (sunrai-1.png, sunrai-2.png, sunrai-3.png)
-   - APACT Trading Platform (apact1.png, apact2.png, apact3.png)
-   - Screenshotter (screenshotter-1.png, screenshotter-2.png)
-   - GitHub 2025: link to github.com/janedoe
-8. Add portfolio link: myportfolio.vercel.app
-9. Add GitHub link: github.com/janedoe
+7. Add portfolio items with screenshots from $PORTFOLIO_IMAGES
+8. Add portfolio and GitHub links from profile.json
 
 Report what was updated and any fields that need manual attention.
 PROMPT
@@ -52,7 +47,7 @@ echo ""
 # Fiverr gig setup
 echo "[Fiverr] Setting up gigs..."
 openclaw_agent --message "$(cat <<PROMPT
-Set up Guillermo's Fiverr gigs using browser automation.
+Set up Fiverr gigs using browser automation. Load profile from config/profile.json.
 
 Reference: skills/profile-manager/references/fiverr-gig-guide.md
 

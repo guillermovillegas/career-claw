@@ -5,7 +5,7 @@ description: "Manage calendar and meeting scheduling for interviews and client c
 
 # Calendar & Meeting Scheduling
 
-Manage interview scheduling, client calls, and availability for Jane Doe.
+Manage interview scheduling, client calls, and availability for the user.
 
 ## Availability Defaults
 
@@ -13,7 +13,7 @@ Manage interview scheduling, client calls, and availability for Jane Doe.
 - **Preferred hours:** 9:00 AM - 5:00 PM CT, weekdays only
 - **No meetings before** 9:00 AM CT or after 6:00 PM CT
 - **Buffer between meetings:** 15 minutes minimum
-- **Weekend meetings:** Only if explicitly approved by Guillermo
+- **Weekend meetings:** Only if explicitly approved by the user
 
 ## Default Meeting Durations
 
@@ -43,7 +43,7 @@ When proposing times to an external party, always:
 1. Offer 3 time slots across 2 different days
 2. Format as: "Tuesday, March 4 at 10:00 AM CT" (full day name, date, time, timezone)
 3. Include timezone conversion if the other party is in a different zone
-4. Confirm Guillermo's approval before sending proposed times
+4. Confirm the user's approval before sending proposed times
 
 Example response to share:
 
@@ -62,7 +62,7 @@ Any of those work for you? Happy to find another time if not.
 For recurring scheduling needs, create or share Cal.com booking links:
 
 - Use Cal.com to generate a link with available slots
-- Set the link to respect Guillermo's calendar availability
+- Set the link to respect the user's calendar availability
 - Share the link instead of going back-and-forth on times
 
 When sharing a booking link in an email:
@@ -75,7 +75,7 @@ To make scheduling easy, feel free to pick a time that works for you: [Cal.com l
 
 When creating or suggesting calendar invites:
 
-- Title format: "[Type] - Jane Doe / [Other person] - [Company]"
+- Title format: "[Type] - the user / [Other person] - [Company]"
 - Include video link (Zoom, Google Meet, or their preference)
 - Add a brief agenda or context in the description
 - Set a 10-minute reminder
@@ -91,7 +91,7 @@ When creating or suggesting calendar invites:
 
 If a new meeting request conflicts with an existing event:
 
-1. Flag the conflict to Guillermo
+1. Flag the conflict to the user
 2. Propose alternative times that avoid the conflict
 3. Never reschedule existing meetings without explicit approval
 4. Priority order: active interviews > client calls > networking > informational

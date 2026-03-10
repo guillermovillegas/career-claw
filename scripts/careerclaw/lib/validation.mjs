@@ -5,6 +5,15 @@
 
 import http from "http";
 import https from "https";
+import { getCoverLetterConfig } from "../../../config/load-profile.mjs";
+
+// Build name-stripping regex from profile
+const _clCfg = getCoverLetterConfig();
+const _nameParts = _clCfg.fullName.split(/\s+/);
+const _nameRegex = new RegExp(
+  `\\n\\s*${_nameParts[0]}\\s*(${_nameParts.slice(1).join("\\s+")})?\\s*$`,
+  "i",
+);
 
 // ─── Cover Letter Validation ──────────────────────────────────────────────────
 
@@ -140,7 +149,7 @@ export function validateCoverLetterForJob(letter, company, title) {
       /\n\s*(Sincerely|Best regards?|Regards|Warm regards|Cheers|Thank you|Thanks),?\s*\n/i.test(
         letter,
       ) ||
-      /\n\s*Guillermo\s*(Villegas)?\s*$/i.test(letter)
+      _nameRegex.test(letter)
     ) {
       issues.push("ends with bare sign-off/name — AI spam pattern");
     }
