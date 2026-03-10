@@ -781,17 +781,29 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
               matchFn: (t) => /decline|prefer not/i.test(t),
             }).catch(() => {});
           });
-        } else if (/sexual|transgender/i.test(lbl)) {
-          // Sexual orientation / transgender — decline to self-identify
-          await pickReactSelect(page, el, {
-            matchFn: (t) =>
-              /decline|prefer not|choose not|not to answer|don.t wish|do not wish|rather not|not to self|not to disclose|n\/a/i.test(
-                t,
-              ),
-          }).catch(async () => {
-            // Fallback: pick last option (usually "prefer not to say")
-            await pickReactSelect(page, el, {}).catch(() => {});
+        } else if (/transgender/i.test(lbl)) {
+          // GH rejects "decline/don't wish to answer" for required EEOC — pick "No"
+          let ok = await pickReactSelect(page, el, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
           });
+          if (!ok) {
+            await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not|don.t wish/i.test(t),
+            }).catch(() => {});
+          }
+        } else if (/sexual/i.test(lbl)) {
+          // GH rejects "decline/don't wish to answer" — pick concrete answer
+          let ok = await pickReactSelect(page, el, {
+            matchFn: (t) => /heterosexual|straight/i.test(t.trim()),
+          });
+          if (!ok) {
+            ok = await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not|don.t wish/i.test(t),
+            });
+          }
+          if (!ok) {
+            await pickReactSelect(page, el, {}).catch(() => {});
+          }
         } else if (/degree|education.*level|highest.*education/i.test(lbl)) {
           await pickReactSelect(page, el, {
             matchFn: (t) => /bachelor/i.test(t),
@@ -2090,17 +2102,18 @@ async function submitGreenhouse(page, job, coverLetter) {
             if (isRS) {
               let filled = false;
               // Try to fill React Select based on label
-              if (/sexual|transgender/i.test(lbl)) {
+              if (/transgender/i.test(lbl)) {
+                // GH rejects "decline/don't wish to answer" for required EEOC — pick "No"
+                filled = await tryPick(formCtx, el, {
+                  matchFn: (t) => /^no\b/i.test(t.trim()),
+                });
+              } else if (/sexual/i.test(lbl)) {
+                // GH rejects "decline/don't wish to answer" — pick concrete or "Heterosexual"
                 filled = await tryPick(
                   formCtx,
                   el,
-                  {
-                    matchFn: (t) =>
-                      /decline|prefer not|choose not|not to answer|don.t wish|do not wish|rather not/i.test(
-                        t,
-                      ),
-                  },
-                  null,
+                  { matchFn: (t) => /heterosexual|straight/i.test(t.trim()) },
+                  { matchFn: (t) => /^no\b|decline|prefer not/i.test(t.trim()) },
                 );
               } else if (/country.*resid|currently resid|resid.*country|what country/i.test(lbl)) {
                 filled = await tryPick(formCtx, el, {
@@ -2209,7 +2222,8 @@ async function submitGreenhouse(page, job, coverLetter) {
             .locator('button:has-text("Submit"), input[type="submit"], button[type="submit"]')
             .first();
           if ((await retrySubmit.count()) > 0) {
-            await retrySubmit.click();
+            // Force click even if disabled — triggers client-side validation which may reveal more errors
+            await retrySubmit.click({ force: true, timeout: 5000 }).catch(() => {});
             await formCtx.waitForTimeout(5000);
             // Check for success
             const retryBody = await formCtx
