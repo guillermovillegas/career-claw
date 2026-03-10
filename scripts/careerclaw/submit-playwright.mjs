@@ -220,6 +220,52 @@ async function tryFill(page, selectors, value) {
   return false;
 }
 
+// ─── Autocomplete location helper ────────────────────────────────────────────
+// Greenhouse uses a custom autocomplete for location/city fields.
+// Type text, wait for suggestions, click the first matching one.
+async function fillLocationAutocomplete(
+  page,
+  el,
+  searchText = "Chicago",
+  matchText = /chicago.*illinois/i,
+) {
+  await el.fill("");
+  await el.pressSequentially(searchText, { delay: 50 });
+  await page.waitForTimeout(800);
+  // Try common autocomplete dropdown patterns
+  const selectors = [
+    '[role="listbox"] [role="option"]',
+    ".autocomplete-results li",
+    ".suggestions li",
+    ".pac-item", // Google Places
+    'ul[id*="listbox"] li',
+    'div[class*="suggestion"]',
+    'div[class*="option"]',
+  ];
+  for (const sel of selectors) {
+    const items = page.locator(sel);
+    const count = await items.count().catch(() => 0);
+    for (let i = 0; i < count; i++) {
+      const text = await items
+        .nth(i)
+        .textContent()
+        .catch(() => "");
+      if (matchText.test(text)) {
+        await items.nth(i).click();
+        await page.waitForTimeout(300);
+        return true;
+      }
+    }
+    // If we found items but none matched, click the first one (usually best match)
+    if (count > 0) {
+      await items.first().click();
+      await page.waitForTimeout(300);
+      return true;
+    }
+  }
+  return false;
+}
+
 // ─── React Select helper ──────────────────────────────────────────────────────
 // Greenhouse uses React Select for all dropdowns (class="select__input").
 // You must click the input, optionally type to filter, then click select__option.
@@ -433,6 +479,20 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           if (!checked) {
             await el.check().catch(() => {});
           }
+        } else if (/^none of the above$|^none of these apply/i.test(lbl.trim())) {
+          // Restrictive country / OFAC checkbox groups — check "None of the above"
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
+        } else if (/^u\.?s\.?\s*citizen$/i.test(lbl.trim())) {
+          // Citizenship status — check "U.S. citizen"
+          const checked = await el.isChecked().catch(() => false);
+          if (!checked) {
+            await el.check().catch(() => {});
+          }
+        } else if (/^not applicable.*none of the above/i.test(lbl.trim())) {
+          // "Not applicable (i.e., I selected 'none of the above')" — skip; we have a real answer
         }
         continue;
       }
@@ -549,6 +609,15 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             matchFn: (t) => /^no\b/i.test(t.trim()),
           });
         } else if (
+          /do you have (at least|a minimum|more than|\d+\+?\s*years?)|are you.*comfortable.*with|are you.*proficient|are you.*experienced/i.test(
+            lbl,
+          )
+        ) {
+          // Screening yes/no questions: "Do you have at least 3 years of X?" → Yes
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^yes\b/i.test(t.trim()),
+          });
+        } else if (
           /experience|proven|track record|building|working on|familiar|proficient/i.test(lbl)
         ) {
           // Yes/No experience questions (do you have experience with X?) → Yes
@@ -561,13 +630,28 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             matchFn: (t) => /linkedin|job board|website/i.test(t),
           });
         } else if (/gender/i.test(lbl) && !/race|ethnicity/i.test(lbl)) {
-          // Gender — select Male
+          // Gender identity — try Male/Man/Cisgender Man, fallback decline
           await pickReactSelect(page, el, {
-            matchFn: (t) => /^male$/i.test(t.trim()),
+            matchFn: (t) => /^male$|^man$|^cis.*man$|^cisgender.*male/i.test(t.trim()),
           }).catch(async () => {
             await pickReactSelect(page, el, {
-              matchFn: (t) => /decline|prefer not/i.test(t),
-            }).catch(() => {});
+              matchFn: (t) =>
+                /decline|prefer not|choose not|not to answer|don.t wish|do not wish/i.test(t),
+            }).catch(async () => {
+              // Last resort — pick first non-blank option
+              await pickReactSelect(page, el, {}).catch(() => {});
+            });
+          });
+        } else if (/pronoun/i.test(lbl)) {
+          // Pronouns — He/Him or decline
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /he\s*\/\s*him|he\/him/i.test(t.trim()),
+          }).catch(async () => {
+            await pickReactSelect(page, el, {
+              matchFn: (t) => /decline|prefer not|choose not|not to answer/i.test(t),
+            }).catch(async () => {
+              await pickReactSelect(page, el, {}).catch(() => {});
+            });
           });
         } else if (/hispanic|latino/i.test(lbl)) {
           // Hispanic/Latino — select Yes
@@ -602,10 +686,16 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             }).catch(() => {});
           });
         } else if (/sexual|transgender/i.test(lbl)) {
-          // Sexual orientation / transgender — decline
+          // Sexual orientation / transgender — decline to self-identify
           await pickReactSelect(page, el, {
-            matchFn: (t) => /decline|prefer not|choose not|not to answer/i.test(t),
-          }).catch(() => {});
+            matchFn: (t) =>
+              /decline|prefer not|choose not|not to answer|don.t wish|do not wish|rather not|not to self|not to disclose|n\/a/i.test(
+                t,
+              ),
+          }).catch(async () => {
+            // Fallback: pick last option (usually "prefer not to say")
+            await pickReactSelect(page, el, {}).catch(() => {});
+          });
         } else if (/degree|education.*level|highest.*education/i.test(lbl)) {
           await pickReactSelect(page, el, {
             matchFn: (t) => /bachelor/i.test(t),
@@ -632,6 +722,56 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
                 t,
               ),
           }).catch(() => {});
+        } else if (
+          /have you (applied|previously|ever).*before|previously applied|applied.*in the (last|past)|applied.*24 months|applied.*12 months|applied.*this|prior.*application/i.test(
+            lbl,
+          )
+        ) {
+          // "Have you applied before?" → No
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(async () => {
+            await el.selectOption?.({ label: "No" }).catch(() => {});
+          });
+        } else if (
+          /require.*work.*permit|require.*visa|need.*visa|need.*work.*permit|work.*permit.*require|visa.*require/i.test(
+            lbl,
+          )
+        ) {
+          // "Do you require work permit/visa?" → No
+          await pickReactSelect(page, el, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(async () => {
+            await el.selectOption?.({ label: "No" }).catch(() => {});
+          });
+        } else if (/time\s*zone|timezone|your.*tz/i.test(lbl)) {
+          // Timezone question
+          await pickReactSelect(page, el, {
+            search: "Central",
+            matchFn: (t) => /central|ct|cst|cdt|america.*chicago|us.*central|utc.*-[56]/i.test(t),
+          }).catch(async () => {
+            await pickReactSelect(page, el, { search: "CST" }).catch(() => {});
+          });
+        } else if (
+          /years.*(java|node\.?js|python|typescript|react|golang|ruby|c\+\+|scala|rust|swift|kotlin)/i.test(
+            lbl,
+          )
+        ) {
+          // Tech-specific years of experience
+          await pickReactSelect(page, el, {
+            matchFn: (t) => {
+              const txt = t.trim().toLowerCase();
+              if (/^10\b|^10\+|^8\+|^7\+|8\s*-\s*10|7\s*-\s*10/i.test(txt)) {
+                return true;
+              }
+              if (/^5\b|^5\+|^5\s*-/i.test(txt)) {
+                return true;
+              }
+              return false;
+            },
+          }).catch(async () => {
+            await pickReactSelect(page, el, { search: "5" }).catch(() => {});
+          });
         } else if (/residing.*eu|residing.*europe|eu or ukraine|within the eu/i.test(lbl)) {
           // EU residency — No (US-based)
           await pickReactSelect(page, el, {
@@ -788,6 +928,11 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             .catch(() => {});
         } else if (/how did you (hear|find|learn)|how.*hear.*about/i.test(lbl)) {
           await el.fill("LinkedIn").catch(() => {});
+        } else if (
+          /how.*use.*ai|ai.*to apply|assisted.*by.*ai|used.*ai.*tools|ai.*help.*apply/i.test(lbl)
+        ) {
+          // Trap question — skip (leave blank or N/A)
+          await el.fill("N/A").catch(() => {});
         } else if (/tell us|anything.*add|additional.*info|anything.*else/i.test(lbl)) {
           if (!/how did you|hear.*about/i.test(lbl)) {
             await el.fill(FA.additional_info || "").catch(() => {});
@@ -842,8 +987,17 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/referred.by|who referred|referral.*name|referrer/i.test(lbl)) {
           // Required referral field — fill "N/A" when not referred
           await el.fill("N/A").catch(() => {});
-        } else if (/\bcity\b/i.test(lbl)) {
-          await el.fill("Chicago").catch(() => {});
+        } else if (/\bcity\b|^location\b/i.test(lbl)) {
+          // City/Location autocomplete — type and click suggestion
+          const picked = await fillLocationAutocomplete(
+            page,
+            el,
+            "Chicago",
+            /chicago.*illinois/i,
+          ).catch(() => false);
+          if (!picked) {
+            await el.fill("Chicago").catch(() => {});
+          }
         } else if (/^state$|^state\/province$|state.*residence/i.test(lbl)) {
           await el.fill("IL").catch(() => {});
         } else if (/^zip$|^zip code$|postal.*code/i.test(lbl)) {
@@ -855,16 +1009,64 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/ai.*tool|llm.*familiar|familiar.*llm|ai.*model|llm.*use/i.test(lbl)) {
           await el.fill("Claude (Anthropic), GPT-4, Gemini").catch(() => {});
         } else if (
-          /compensation.*expect|expect.*compensation|salary.*expect|desired.*salary/i.test(lbl)
+          /compensation.*expect|expect.*compensation|salary.*expect|desired.*salary|current.*ctc|expected.*ctc|what is your.*ctc/i.test(
+            lbl,
+          )
         ) {
           await el.fill(FA.compensation_expectation || "200000").catch(() => {});
+        } else if (
+          /how many.*project|projects.*scaled|scale.*from.*0.*to.*1|0.*to.*1.*in.*ai|projects.*built|products.*launched/i.test(
+            lbl,
+          )
+        ) {
+          // "How many projects did you scale from 0 to 1 in AI?" — numeric answer
+          await el.fill("4").catch(() => {});
+        } else if (
+          /able to work.*office|hybrid.*schedule|in.*office|on.?site.*days|report.*to.*office/i.test(
+            lbl,
+          )
+        ) {
+          // Hybrid/onsite schedule question — "Yes" (flexible)
+          await el.fill("Yes").catch(() => {});
+        } else if (
+          /how many years|years of (experience|professional|product|pm\b|management|work)|total.*years|years.*experience/i.test(
+            lbl,
+          )
+        ) {
+          // Numeric years of experience — MUST be before generic experience handler
+          if (/ai|ml|machine learning|artificial intelligence/i.test(lbl)) {
+            await el.fill("5").catch(() => {});
+          } else if (/product|pm\b|management/i.test(lbl)) {
+            await el.fill("6").catch(() => {});
+          } else if (/lead|manag.*people|direct report|supervis/i.test(lbl)) {
+            await el.fill("4").catch(() => {});
+          } else if (/saas|b2b|software/i.test(lbl)) {
+            await el.fill("10").catch(() => {});
+          } else {
+            await el.fill("10").catch(() => {});
+          }
+        } else if (/years.*ai|ai.*years|years.*ml|ml.*years|years.*machine learning/i.test(lbl)) {
+          await el.fill("5").catch(() => {});
+        } else if (/years.*lead|years.*manag|years.*direct/i.test(lbl)) {
+          await el.fill("4").catch(() => {});
+        } else if (
+          /do you have (at least|a minimum|more than|\d+\+?\s*years?)|are you.*comfortable|are you.*proficient/i.test(
+            lbl,
+          )
+        ) {
+          // Screening yes/no text input: "Do you have at least 3 years of X?" → "Yes"
+          await el.fill("Yes").catch(() => {});
         } else if (
           /describe.*experience|your.*experience|tell.*us.*about|experience.*owning|experience.*with/i.test(
             lbl,
           )
         ) {
           await el.fill(FA.ai_experience || FA.professional_summary || "").catch(() => {});
-        } else if (/physical.*address|mailing.*address|full.*address|street.*address/i.test(lbl)) {
+        } else if (
+          /physical.*address|mailing.*address|full.*address|street.*address|current.*address|your.*address|home.*address/i.test(
+            lbl,
+          )
+        ) {
           await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
         } else if (
           /visa.*status|current.*visa|immigration.*status|work.*authorization.*status|authorization.*status.*us/i.test(
@@ -875,7 +1077,15 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/legal.*address|full.*address|home.*address|residential.*address/i.test(lbl)) {
           await el.fill(`${P.location} ${FA.zip_code}`.trim()).catch(() => {});
         } else if (/current.*location|where.*located|location.*city|your.*location/i.test(lbl)) {
-          await el.fill(P.location).catch(() => {});
+          const picked = await fillLocationAutocomplete(
+            page,
+            el,
+            "Chicago",
+            /chicago.*illinois/i,
+          ).catch(() => false);
+          if (!picked) {
+            await el.fill(P.location).catch(() => {});
+          }
         } else if (
           /country.*time.*zone|time.*zone.*country|where.*based.*time|country.*based/i.test(lbl)
         ) {
@@ -903,27 +1113,6 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/end.*year|year.*end/i.test(lbl)) {
           // Leave blank (currently employed)
         } else if (
-          /how many years|years of (experience|professional|product|pm\b|management|work)|total.*years/i.test(
-            lbl,
-          )
-        ) {
-          // Numeric years of experience text inputs
-          if (/ai|ml|machine learning|artificial intelligence/i.test(lbl)) {
-            await el.fill("5").catch(() => {});
-          } else if (/product|pm\b|management/i.test(lbl)) {
-            await el.fill("6").catch(() => {});
-          } else if (/lead|manag.*people|direct report|supervis/i.test(lbl)) {
-            await el.fill("4").catch(() => {});
-          } else if (/saas|b2b|software/i.test(lbl)) {
-            await el.fill("10").catch(() => {});
-          } else {
-            await el.fill("10").catch(() => {});
-          }
-        } else if (/years.*ai|ai.*years|years.*ml|ml.*years|years.*machine learning/i.test(lbl)) {
-          await el.fill("5").catch(() => {});
-        } else if (/years.*lead|years.*manag|years.*direct/i.test(lbl)) {
-          await el.fill("4").catch(() => {});
-        } else if (
           /current.*job.*title|previous.*job.*title|most recent.*title|what is your.*title|job title/i.test(
             lbl,
           )
@@ -940,6 +1129,30 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el.fill("Computer Science").catch(() => {});
         } else if (/graduation.*year|year.*graduat/i.test(lbl)) {
           await el.fill("2015").catch(() => {});
+        } else if (/time\s*zone|timezone|your.*tz/i.test(lbl)) {
+          await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
+        } else if (
+          /have you (applied|previously|ever).*before|previously applied|applied.*in the (last|past)|applied.*24 months|applied.*12 months/i.test(
+            lbl,
+          )
+        ) {
+          await el.fill("No").catch(() => {});
+        } else if (/require.*work.*permit|require.*visa|need.*visa|need.*work.*permit/i.test(lbl)) {
+          await el.fill("No").catch(() => {});
+        } else if (
+          /how.*use.*ai|ai.*to apply|assisted.*by.*ai|used.*ai.*tools|ai.*help.*apply|chatgpt|claude.*apply/i.test(
+            lbl,
+          )
+        ) {
+          // Trap question about AI-assisted applications — be honest but brief
+          await el.fill("N/A").catch(() => {});
+        } else if (
+          /years.*(java|node\.?js|python|typescript|react|golang|ruby|c\+\+|scala|rust|swift|kotlin)/i.test(
+            lbl,
+          )
+        ) {
+          // Tech-specific years
+          await el.fill("10").catch(() => {});
         } else if (/notice.*period|start.*date|available.*start|earliest.*start/i.test(lbl)) {
           await el.fill("2 weeks").catch(() => {});
         } else if (/current.*location.*city|where.*based|where.*you.*located/i.test(lbl)) {
@@ -1005,6 +1218,25 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/certification|certified|security\+|clearance/i.test(qText)) {
           await pickReactSelect(page, sel, {
             matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(() => {});
+        } else if (
+          /have you (applied|previously)|previously applied|applied.*in the (last|past)|applied.*24 months/i.test(
+            qText,
+          )
+        ) {
+          await pickReactSelect(page, sel, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(() => {});
+        } else if (
+          /require.*work.*permit|require.*visa|need.*visa|need.*work.*permit/i.test(qText)
+        ) {
+          await pickReactSelect(page, sel, {
+            matchFn: (t) => /^no\b/i.test(t.trim()),
+          }).catch(() => {});
+        } else if (/time\s*zone|timezone/i.test(qText)) {
+          await pickReactSelect(page, sel, {
+            search: "Central",
+            matchFn: (t) => /central|ct|cst|cdt|america.*chicago|us.*central/i.test(t),
           }).catch(() => {});
         }
       }
@@ -1236,6 +1468,39 @@ async function submitGreenhouse(page, job, coverLetter) {
   // so fetchGhVerificationCode only finds the fresh code for this submission.
   await clearStaleGhCodes();
 
+  // Dismiss cookie/CCPA banners that may block the submit button
+  for (const bannerSel of [
+    'iframe[id*="ccpa"]',
+    'div[class*="cookie-banner"]',
+    'div[class*="consent"]',
+    "#onetrust-banner-sdk",
+  ]) {
+    const banner = page.locator(bannerSel).first();
+    if (await banner.isVisible({ timeout: 500 }).catch(() => false)) {
+      // Try to close/dismiss the banner
+      const closeBtn = page
+        .locator(
+          'button:has-text("Reject"), button:has-text("Decline"), button:has-text("Close"), button[aria-label="Close"]',
+        )
+        .first();
+      if (await closeBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+        await closeBtn.click().catch(() => {});
+        await page.waitForTimeout(300);
+      } else {
+        // Remove the blocking element via JS
+        await page
+          .evaluate((sel) => {
+            const el = document.querySelector(sel);
+            if (el) {
+              el.remove();
+            }
+          }, bannerSel)
+          .catch(() => {});
+        await page.waitForTimeout(300);
+      }
+    }
+  }
+
   // Submit (use formCtx which may be an iframe)
   // Note: GH embed forms use input[type="button"]#submit_app, not type="submit"
   const submitBtn = formCtx
@@ -1247,13 +1512,14 @@ async function submitGreenhouse(page, job, coverLetter) {
         'input[type="submit"]',
         'button:has-text("Submit application")',
         'button:has-text("Submit")',
+        'button:has-text("Let\'s go")',
       ].join(", "),
     )
     .last();
 
   try {
     await submitBtn.waitFor({ timeout: 12000 });
-    await submitBtn.click();
+    await submitBtn.click({ force: true });
     // Wait for navigation or success indicator (up to 20s)
     await Promise.race([
       page.waitForURL(/confirmation|success|thank/i, { timeout: 20000 }),
@@ -1633,6 +1899,26 @@ async function submitAshby(page, job, coverLetter) {
         }
         continue;
       }
+      if (/require.*work.*permit|require.*visa|need.*visa|need.*work.*permit/i.test(lbl)) {
+        const noBtn = container.locator('button:has-text("No")');
+        if (await noBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+          await noBtn.click();
+          await page.waitForTimeout(300);
+        }
+        continue;
+      }
+      if (
+        /have you (applied|previously|ever).*before|previously applied|applied.*in the (last|past)/i.test(
+          lbl,
+        )
+      ) {
+        const noBtn = container.locator('button:has-text("No")');
+        if (await noBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+          await noBtn.click();
+          await page.waitForTimeout(300);
+        }
+        continue;
+      }
 
       // Text inputs
       const textInput = container.locator('input[type="text"], input:not([type])').first();
@@ -1668,6 +1954,18 @@ async function submitAshby(page, job, coverLetter) {
           await textInput.fill(P.last_name).catch(() => {});
         } else if (/pronouns/i.test(lbl)) {
           await textInput.fill(FA.pronouns || "").catch(() => {});
+        } else if (/time\s*zone|timezone/i.test(lbl)) {
+          await textInput.fill("Central Time (CT) / America/Chicago").catch(() => {});
+        } else if (
+          /have you (applied|previously).*before|previously applied|applied.*in the (last|past)/i.test(
+            lbl,
+          )
+        ) {
+          await textInput.fill("No").catch(() => {});
+        } else if (/require.*work.*permit|require.*visa|need.*visa/i.test(lbl)) {
+          await textInput.fill("No").catch(() => {});
+        } else if (/years.*(java|node|python|typescript|react|golang|ruby)/i.test(lbl)) {
+          await textInput.fill("10").catch(() => {});
         }
         continue;
       }
@@ -1935,9 +2233,17 @@ const jobs = await sGet(`jobs?id=in.(${jobIds.join(",")})&select=id,title,compan
 const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
 
 // Split: auto-submittable vs manual
+// Skip apps that already failed auto-submit (avoid infinite retries)
 const toSubmit = applications.filter((a) => {
   const j = jobMap[a.job_id];
-  return j?.url && detectPlatform(j.url) && (a.match_score || 0) >= MIN_SCORE;
+  if (!j?.url || !detectPlatform(j.url) || (a.match_score || 0) < MIN_SCORE) {
+    return false;
+  }
+  // Skip if already failed auto-submit (notes contain failure marker)
+  if (a.notes && /Auto-submit failed/i.test(a.notes)) {
+    return false;
+  }
+  return true;
 });
 const manual = applications.filter((a) => {
   const j = jobMap[a.job_id];
@@ -2080,8 +2386,10 @@ for (const [i, application] of validated.entries()) {
       reason: String(result.reason).slice(0, 200),
     });
     if (!DRY_RUN) {
+      const existingNotes = application.notes || "";
+      const failNote = `Auto-submit failed (${platform}): ${String(result.reason).slice(0, 150)} — submit manually at: ${job.url} (${TODAY})`;
       await sPatch("applications", application.id, {
-        notes: `Auto-submit failed (${platform}): ${result.reason} — submit manually at: ${job.url}`,
+        notes: existingNotes ? `${existingNotes} | ${failNote}` : failNote,
       });
     }
     failed++;
