@@ -943,6 +943,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           } else {
             await el.fill("LinkedIn").catch(() => {});
           }
+        } else if (
+          /do you have \d+\+?\s*years?|are you.*experienced|are you.*comfortable|are you.*proficient/i.test(
+            lbl,
+          )
+        ) {
+          // Screening yes/no textarea — answer affirmatively with brief context
+          await el.fill("Yes").catch(() => {});
         } else {
           // Unknown textarea — leave blank (wrong content is worse than empty)
         }
