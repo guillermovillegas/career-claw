@@ -332,37 +332,39 @@ async function pickReactSelect(page, el, { search = "", matchFn = null } = {}) {
       return true;
     }
 
-    // Helper: click option and verify it stuck, fall back to keyboard if not
+    // Helper: click option, verify, fall back to keyboard + dispatchEvent
     const clickOption = async (opt) => {
       const optText = ((await opt.textContent()) || "").trim();
       await opt.scrollIntoViewIfNeeded().catch(() => {});
       await page.waitForTimeout(50);
-      await opt.click();
-      await page.waitForTimeout(300);
-      // Verify selection stuck by checking for select__single-value or select__placeholder
+      // Fire mousedown specifically (React Select listens on mousedown)
+      await opt.dispatchEvent("mousedown").catch(() => {});
+      await page.waitForTimeout(100);
+      await opt.click().catch(() => {});
+      await page.waitForTimeout(400);
+      // Verify selection stuck by checking for placeholder being gone
       const container = el
         .locator('xpath=ancestor::*[contains(@class,"select__container")]')
         .first();
-      const val = await container
-        .locator(".select__single-value")
-        .textContent({ timeout: 1000 })
-        .catch(() => "");
-      if (val && val.trim() === optText) {
-        return true;
+      const placeholder = await container
+        .locator(".select__placeholder")
+        .count()
+        .catch(() => 0);
+      if (!placeholder) {
+        return true; // No placeholder = value is set
       }
-      // Click didn't register — try keyboard: click input, arrow down to option, Enter
+      // Click didn't register — try keyboard: type + Enter
       const kb = page.keyboard || page.page?.()?.keyboard;
       if (kb) {
         await kb.press("Escape").catch(() => {});
         await page.waitForTimeout(200);
         await el.click({ timeout: 3000 }).catch(() => {});
         await page.waitForTimeout(300);
-        // Type first few chars to filter
         if (optText) {
           await el.evaluate((node) => {
             node.value = "";
           });
-          await el.type(optText.slice(0, 10), { delay: 30 });
+          await el.type(optText.slice(0, 15), { delay: 30 });
           await page.waitForTimeout(500);
         }
         await kb.press("Enter").catch(() => {});
@@ -2261,6 +2263,18 @@ async function submitGreenhouse(page, job, coverLetter) {
               .locator("body")
               .textContent({ timeout: 3000 })
               .catch(() => "");
+            // Check if security code input appeared (means form was accepted, needs code)
+            const retrySecCode = await formCtx
+              .locator('#security_code, [id="security-input-0"]')
+              .first()
+              .isVisible({ timeout: 1000 })
+              .catch(() => false);
+            if (retrySecCode) {
+              console.log(`    [retry ${retryRound + 1}/3] Form accepted — security code required`);
+              // Re-read bodyText so the main email verification handler picks it up
+              bodyText = retryBody;
+              break;
+            }
             if (
               /thank you|application.*received|submitted|confirmation/i.test(retryBody) &&
               !/this field is required|please fill/i.test(retryBody)
@@ -2274,6 +2288,69 @@ async function submitGreenhouse(page, job, coverLetter) {
         }
         break; // Nothing fixed — stop retrying
       } // end retry loop
+
+      // After retry loop, re-check for security code (retry may have gotten past validation)
+      const postRetrySecCode = await formCtx
+        .locator('#security_code, [id="security-input-0"]')
+        .first()
+        .isVisible({ timeout: 1000 })
+        .catch(() => false);
+      if (postRetrySecCode) {
+        // Proceed to email verification — same flow as above (line ~1784)
+        const verifyScreenPath = `/tmp/gh-verify-${Date.now()}.png`;
+        await page.screenshot({ path: verifyScreenPath, fullPage: false }).catch(() => {});
+        console.log("    [code] Verification code required — checking Gmail…");
+        const code = await pollForGhCode();
+        if (code) {
+          try {
+            const codeInputs = formCtx.locator('[id^="security-input-"]');
+            const codeCount = await codeInputs.count();
+            if (codeCount >= 8) {
+              for (let ci = 0; ci < Math.min(code.length, codeCount); ci++) {
+                await codeInputs.nth(ci).fill(code[ci]);
+                await formCtx.waitForTimeout(50);
+              }
+            } else {
+              const codeField = formCtx.locator("#security_code").first();
+              if ((await codeField.count()) > 0) {
+                await codeField.fill(code);
+              }
+            }
+            await formCtx.waitForTimeout(3000);
+            const codeBody = await formCtx
+              .locator("body")
+              .textContent({ timeout: 5000 })
+              .catch(() => "");
+            if (/thank you|application.*received|submitted|we received/i.test(codeBody)) {
+              return { success: true };
+            }
+            if (/error processing your application|please try again/i.test(codeBody)) {
+              console.log("    [code] Server error after code — retrying submit...");
+              await page.waitForTimeout(3000);
+              const retryBtn = formCtx
+                .locator('button:has-text("Submit"), input[type="submit"]')
+                .first();
+              if ((await retryBtn.count()) > 0) {
+                await retryBtn.click({ force: true, timeout: 5000 }).catch(() => {});
+                await formCtx.waitForTimeout(5000);
+                const retryCodeBody = await formCtx
+                  .locator("body")
+                  .textContent({ timeout: 3000 })
+                  .catch(() => "");
+                if (/thank you|application.*received|submitted/i.test(retryCodeBody)) {
+                  return { success: true };
+                }
+              }
+            }
+          } catch (e) {
+            return { success: false, reason: `Post-retry code error: ${e.message.slice(0, 80)}` };
+          }
+        }
+        return {
+          success: false,
+          reason: `Post-retry: verification code ${code ? "entered" : "not found"} (screenshot: ${verifyScreenPath})`,
+        };
+      }
 
       // Still failed — capture error details
       const debugPath = `/tmp/gh-fail-${Date.now()}.png`;
