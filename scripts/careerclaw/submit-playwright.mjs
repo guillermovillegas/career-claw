@@ -434,6 +434,31 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         if (!lblEl) {
           lblEl = el.closest("label");
         }
+        // Try visible text content in React Select container (label rendered as span/div, not <label>)
+        if (!lblEl) {
+          const selectContainer = el.closest(".select__container, .field, .application-field");
+          if (selectContainer) {
+            // Look for any element that looks like a label: span, div, p with short text content
+            const candidates = selectContainer.querySelectorAll(
+              "span, div, p, .field-label, .label, [class*='label'], [class*='placeholder']",
+            );
+            for (const c of candidates) {
+              const txt = c.textContent?.trim();
+              // Ignore empty, single-char, "Select...", or long text (not a label)
+              if (
+                txt &&
+                txt.length > 3 &&
+                txt.length < 200 &&
+                !/^Select\.\.\.?$|^Choose\.\.\.?$/i.test(txt) &&
+                c !== el && // not the input itself
+                !c.querySelector("input, select, textarea") // not a wrapper containing the input
+              ) {
+                lblEl = c;
+                break;
+              }
+            }
+          }
+        }
         // Fallback: use placeholder or id as pseudo-label for floating label forms (e.g. new GH layout)
         let label = lblEl ? lblEl.textContent.trim() : "";
         if (!label && el.placeholder) {
@@ -457,6 +482,18 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
       })
       .filter((x) => x.id && !["hidden", "submit", "search"].includes(x.type));
   });
+
+  // Debug: log all detected fields with empty or ID-fallback labels
+  const unlabeled = fieldIds.filter(
+    (f) =>
+      f.cls.includes("select__input") && (!f.label || /^question |^_cc_auto_|^\d+$/.test(f.label)),
+  );
+  if (unlabeled.length > 0) {
+    console.log(`    [debug] ${unlabeled.length} React Select(s) with no/generic label:`);
+    for (const u of unlabeled) {
+      console.log(`      id=${u.id} label="${u.label}" cls=${u.cls}`);
+    }
+  }
 
   for (const f of fieldIds) {
     if (!f.id) {
@@ -1059,6 +1096,8 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
                 : "Yes",
             )
             .catch(() => {});
+        } else if (/time\s*zone|timezone|your.*tz/i.test(lbl)) {
+          await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
         } else {
           // Unknown textarea — leave blank (wrong content is worse than empty)
         }
@@ -1768,6 +1807,34 @@ async function submitGreenhouse(page, job, coverLetter) {
           ) {
             return { success: true };
           }
+          // Server processing error — retry once
+          if (/error processing your application|please try again/i.test(body2)) {
+            console.log("    [code] Server error after code — retrying submit...");
+            await page.waitForTimeout(3000);
+            const retryBtn2 = codeCtx
+              .locator(
+                'input#submit_app, input[value="Submit Application"], button[type="submit"], button:has-text("Submit")',
+              )
+              .last();
+            await retryBtn2.click().catch(() => {});
+            await page.waitForTimeout(10000);
+            let body3 = await page.textContent("body").catch(() => "");
+            if (formCtx !== page) {
+              body3 +=
+                " " +
+                (await formCtx
+                  .locator("body")
+                  .textContent()
+                  .catch(() => ""));
+            }
+            if (
+              /thank you|thanks for applying|application received|successfully submitted|we.ll be in touch|application submitted|we received your/i.test(
+                body3,
+              )
+            ) {
+              return { success: true };
+            }
+          }
           const debugPath2 = `/tmp/gh-after-code-${Date.now()}.png`;
           await page.screenshot({ path: debugPath2 }).catch(() => {});
           return {
@@ -1789,10 +1856,202 @@ async function submitGreenhouse(page, job, coverLetter) {
       };
     }
     if (/this field is required|please fill|please complete|validation error/i.test(bodyText)) {
-      // Save screenshot for debugging
+      // ─── Auto-retry: find unfilled required fields and fill them ─────────
+      const unfilled = await formCtx
+        .evaluate(() => {
+          const results = [];
+          // Find error indicators and their associated fields
+          document
+            .querySelectorAll('[id*="-error"], [class*="field-error"], [class*="error-message"]')
+            .forEach((errEl) => {
+              if (!errEl.textContent?.trim()) {
+                return;
+              }
+              // Walk up to find the parent field container
+              const container = errEl.closest(
+                ".select__container, .field, .application-field, [class*='question'], .form-group",
+              );
+              if (!container) {
+                return;
+              }
+              // Find the input/select in this container
+              const inp = container.querySelector(
+                "input:not([type='hidden']):not([type='submit']), textarea, select",
+              );
+              if (!inp) {
+                return;
+              }
+              // Get label text — try label element, then visible text in container
+              let label = "";
+              const lblEl =
+                (inp.id && document.querySelector(`label[for="${inp.id}"]`)) ||
+                container.querySelector("label, legend, .field-label");
+              if (lblEl) {
+                label = lblEl.textContent.trim();
+              } else {
+                // Use container's first text-bearing child
+                for (const child of container.children) {
+                  const txt = child.textContent?.trim();
+                  if (
+                    txt &&
+                    txt.length > 3 &&
+                    txt.length < 300 &&
+                    !/^Select\.\.\.?$/i.test(txt) &&
+                    !child.querySelector("input, select, textarea")
+                  ) {
+                    label = txt;
+                    break;
+                  }
+                }
+              }
+              if (!inp.id) {
+                inp.id = `_cc_retry_${Math.random().toString(36).slice(2, 8)}`;
+              }
+              results.push({
+                id: inp.id,
+                label,
+                cls: inp.className || "",
+                tag: inp.tagName.toLowerCase(),
+                type: inp.type || "",
+                errText: errEl.textContent.trim(),
+              });
+            });
+          return results;
+        })
+        .catch(() => []);
+
+      if (unfilled.length > 0) {
+        console.log(`    [retry] Found ${unfilled.length} unfilled required field(s):`);
+        let fixedCount = 0;
+        for (const uf of unfilled) {
+          const lbl = uf.label.toLowerCase();
+          const el = formCtx.locator(`[id="${uf.id}"]`).first();
+          const isRS = uf.cls.includes("select__input");
+          console.log(`      → label="${uf.label.slice(0, 80)}" id=${uf.id} rs=${isRS}`);
+
+          try {
+            if (isRS) {
+              // Try to fill React Select based on label
+              if (/sexual|transgender/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) =>
+                    /decline|prefer not|choose not|not to answer|don.t wish|do not wish|rather not/i.test(
+                      t,
+                    ),
+                }).catch(async () => {
+                  await pickReactSelect(formCtx, el, {}).catch(() => {});
+                });
+                fixedCount++;
+              } else if (/country.*resid|currently resid|resid.*country|what country/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  search: "United States",
+                  matchFn: (t) => /^United States\b/i.test(t.trim()),
+                });
+                fixedCount++;
+              } else if (/citizenship|citizen.*country|dual.*national/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  search: "United States",
+                  matchFn: (t) => /^United States\b|^US$|^USA$/i.test(t.trim()),
+                });
+                fixedCount++;
+              } else if (/arms.*export|itar|export.*control|citizenship.*status/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) => /u\.?s\.?\s*citizen|citizen.*united/i.test(t.trim()),
+                }).catch(async () => {
+                  await pickReactSelect(formCtx, el, {
+                    matchFn: (t) => /^yes\b/i.test(t.trim()),
+                  }).catch(() => {});
+                });
+                fixedCount++;
+              } else if (/how many years|years of experience|years.*professional/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) => /^10\b|^10\+|^10\s*-|8\s*-\s*10|8\+|7\+/i.test(t.trim()),
+                }).catch(async () => {
+                  await pickReactSelect(formCtx, el, { search: "10" }).catch(() => {});
+                });
+                fixedCount++;
+              } else if (
+                /do you have|at least|experience.*in|proficient|coding|python|machine learning|deploying|shipping/i.test(
+                  lbl,
+                )
+              ) {
+                // Yes/No screening — honest: No for coding, Yes for general
+                const isCodingQ =
+                  /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production|machine learning.*engineering/i.test(
+                    lbl,
+                  );
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) => (isCodingQ ? /^no\b/i : /^yes\b/i).test(t.trim()),
+                });
+                fixedCount++;
+              } else if (/gender/i.test(lbl) && !/race|ethnicity/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) => /^male$|^man$/i.test(t.trim()),
+                }).catch(async () => {
+                  await pickReactSelect(formCtx, el, {
+                    matchFn: (t) => /decline|prefer not/i.test(t),
+                  }).catch(() => {});
+                });
+                fixedCount++;
+              } else if (/hear about|referral|how.*find|source/i.test(lbl)) {
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) => /linkedin|job board|website/i.test(t),
+                });
+                fixedCount++;
+              } else {
+                // Unknown React Select — try "No" then "Yes" then first option
+                await pickReactSelect(formCtx, el, {
+                  matchFn: (t) => /^no\b|^n\/a\b|decline|prefer not/i.test(t.trim()),
+                }).catch(async () => {
+                  await pickReactSelect(formCtx, el, {}).catch(() => {});
+                });
+                fixedCount++;
+              }
+            } else if (uf.tag === "textarea") {
+              if (/time\s*zone|timezone/i.test(lbl)) {
+                await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
+                fixedCount++;
+              }
+            } else {
+              // Text input
+              if (/time\s*zone|timezone/i.test(lbl)) {
+                await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
+                fixedCount++;
+              }
+            }
+          } catch {
+            // Silently continue to next field
+          }
+        }
+
+        if (fixedCount > 0) {
+          console.log(`    [retry] Fixed ${fixedCount} field(s), re-submitting...`);
+          await formCtx.waitForTimeout(500);
+          // Click submit again
+          const retrySubmit = formCtx
+            .locator('button:has-text("Submit"), input[type="submit"], button[type="submit"]')
+            .first();
+          if ((await retrySubmit.count()) > 0) {
+            await retrySubmit.click();
+            await formCtx.waitForTimeout(5000);
+            // Check for success
+            const retryBody = await formCtx
+              .locator("body")
+              .textContent({ timeout: 3000 })
+              .catch(() => "");
+            if (
+              /thank you|application.*received|submitted|confirmation/i.test(retryBody) &&
+              !/this field is required|please fill/i.test(retryBody)
+            ) {
+              return { success: true };
+            }
+          }
+        }
+      }
+
+      // Still failed — capture error details
       const debugPath = `/tmp/gh-fail-${Date.now()}.png`;
       await page.screenshot({ path: debugPath, fullPage: false }).catch(() => {});
-      // Get specific error messages + their field labels (check formCtx for iframe forms)
       const errDetails = await formCtx
         .evaluate(() => {
           const results = [];
@@ -1802,7 +2061,6 @@ async function submitGreenhouse(page, job, coverLetter) {
               if (!el.textContent?.trim()) {
                 return;
               }
-              // Find associated label via aria or parent
               const id = el.id?.replace(/-error$/, "");
               const lbl = id
                 ? document.querySelector(`label[for="${id}"]`)?.textContent?.trim()
