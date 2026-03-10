@@ -1861,8 +1861,28 @@ async function submitGreenhouse(page, job, coverLetter) {
         reason: `Email verification required — no code found in Gmail (screenshot: ${verifyScreenPath})`,
       };
     }
-    if (/this field is required|please fill|please complete|validation error/i.test(bodyText)) {
-      // ─── Auto-retry: find unfilled required fields and fill them ─────────
+    // ─── Auto-retry loop: fill unfilled required fields and re-submit (up to 3x) ──
+    for (let retryRound = 0; retryRound < 3; retryRound++) {
+      // Re-read body text on subsequent rounds
+      if (retryRound > 0) {
+        bodyText = await formCtx
+          .locator("body")
+          .textContent({ timeout: 3000 })
+          .catch(() => "");
+      }
+      if (!/this field is required|please fill|please complete|validation error/i.test(bodyText)) {
+        // Check for success
+        if (
+          /thank you|application.*received|submitted|confirmation/i.test(bodyText) &&
+          !/this field is required|please fill/i.test(bodyText)
+        ) {
+          return { success: true };
+        }
+        break; // No validation errors and no success — fall through to error capture
+      }
+      console.log(
+        `    [retry ${retryRound + 1}/3] Validation errors detected — scanning for unfilled fields...`,
+      );
       const unfilled = await formCtx
         .evaluate(() => {
           const results = [];
@@ -1944,41 +1964,53 @@ async function submitGreenhouse(page, job, coverLetter) {
             if (!inp) {
               return;
             }
-            // Resolve label — check parent .field for label element
+            // Resolve label — multiple strategies
             let label = "";
-            const field = container.closest(
-              ".field, .application-field, [class*='question'], .form-group, [data-required]",
-            );
-            if (field) {
-              const lblEl = field.querySelector("label, legend, .field-label");
-              if (lblEl) {
-                label = lblEl.textContent.trim();
+            // S1: label[for] if input has an ID
+            if (inp.id) {
+              const l = document.querySelector(`label[for="${inp.id}"]`);
+              if (l) {
+                label = l.textContent.trim();
               }
             }
-            // Try parent element directly (GH EEOC: parent div wraps label + select__container)
-            if (!label && container.parentElement) {
-              const parent = container.parentElement;
-              const pLbl = parent.querySelector("label, legend, .field-label");
-              if (pLbl) {
-                label = pLbl.textContent.trim();
-              }
-              // Also try grandparent
-              if (!label && parent.parentElement) {
-                const gpLbl = parent.parentElement.querySelector("label, legend, .field-label");
-                if (gpLbl) {
-                  label = gpLbl.textContent.trim();
+            // S2: walk up through all ancestors looking for direct child label
+            if (!label) {
+              let node = container.parentElement;
+              for (let i = 0; i < 5 && node && !label; i++) {
+                const l = node.querySelector(
+                  ":scope > label, :scope > legend, :scope > .field-label",
+                );
+                if (l) {
+                  label = l.textContent.trim();
                 }
+                node = node.parentElement;
               }
             }
-            // Fallback: look for text content in preceding sibling
+            // S3: preceding sibling is label-like
             if (!label) {
               let prev = container.previousElementSibling;
-              while (prev) {
+              for (let i = 0; i < 3 && prev && !label; i++) {
                 if (prev.tagName === "LABEL" || prev.classList?.contains("field-label")) {
                   label = prev.textContent.trim();
-                  break;
+                } else {
+                  const inner = prev.querySelector("label, .field-label");
+                  if (inner) {
+                    label = inner.textContent.trim();
+                  }
                 }
                 prev = prev.previousElementSibling;
+              }
+            }
+            // S4: visible text above select inside parent
+            if (!label && container.parentElement) {
+              for (const child of container.parentElement.children) {
+                if (child === container) {
+                  break;
+                }
+                const txt = child.textContent?.trim();
+                if (txt && txt.length > 3 && txt.length < 300 && !/^Select/i.test(txt)) {
+                  label = txt;
+                }
               }
             }
             if (!inp.id) {
@@ -2008,7 +2040,9 @@ async function submitGreenhouse(page, job, coverLetter) {
       }
 
       if (unfilled.length > 0) {
-        console.log(`    [retry] Found ${unfilled.length} unfilled required field(s):`);
+        console.log(
+          `    [retry ${retryRound + 1}/3] Found ${unfilled.length} unfilled required field(s):`,
+        );
         let fixedCount = 0;
         for (const uf of unfilled) {
           const lbl = uf.label.toLowerCase();
@@ -2115,7 +2149,9 @@ async function submitGreenhouse(page, job, coverLetter) {
         }
 
         if (fixedCount > 0) {
-          console.log(`    [retry] Fixed ${fixedCount} field(s), re-submitting...`);
+          console.log(
+            `    [retry ${retryRound + 1}/3] Fixed ${fixedCount} field(s), re-submitting...`,
+          );
           await formCtx.waitForTimeout(500);
           // Click submit again
           const retrySubmit = formCtx
@@ -2135,9 +2171,13 @@ async function submitGreenhouse(page, job, coverLetter) {
             ) {
               return { success: true };
             }
+            // Update bodyText for next loop iteration
+            bodyText = retryBody;
+            continue; // Try again
           }
         }
-      }
+        break; // Nothing fixed — stop retrying
+      } // end retry loop
 
       // Still failed — capture error details
       const debugPath = `/tmp/gh-fail-${Date.now()}.png`;
