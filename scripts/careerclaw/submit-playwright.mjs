@@ -627,16 +627,24 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             lbl,
           )
         ) {
-          // Screening yes/no questions: "Do you have at least 3 years of X?" → Yes
+          // Screening yes/no questions — honest: "No" for hands-on coding, "Yes" for PM/product/leadership
+          const isCodingQ =
+            /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production/i.test(
+              lbl,
+            );
           await pickReactSelect(page, el, {
-            matchFn: (t) => /^yes\b/i.test(t.trim()),
+            matchFn: (t) => (isCodingQ ? /^no\b/i : /^yes\b/i).test(t.trim()),
           });
         } else if (
           /experience|proven|track record|building|working on|familiar|proficient/i.test(lbl)
         ) {
-          // Yes/No experience questions (do you have experience with X?) → Yes
+          // Yes/No experience questions — honest: "No" for coding-specific, "Yes" for general
+          const isCodingQ =
+            /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code/i.test(
+              lbl,
+            );
           await pickReactSelect(page, el, {
-            matchFn: (t) => /^yes\b/i.test(t.trim()),
+            matchFn: (t) => (isCodingQ ? /^no\b/i : /^yes\b/i).test(t.trim()),
           });
         } else if (/hear about|referral|how.*find|source/i.test(lbl)) {
           // How did you hear about us
@@ -904,10 +912,15 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             lbl,
           )
         ) {
-          // Screening yes/no native select
+          // Screening yes/no native select — honest: "No" for coding, "Yes" for general
+          const isCodingQ =
+            /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code/i.test(
+              lbl,
+            );
+          const answer = isCodingQ ? "No" : "Yes";
           await el
-            .selectOption({ label: "Yes" })
-            .catch(() => el.selectOption({ index: 1 }).catch(() => {}));
+            .selectOption({ label: answer })
+            .catch(() => el.selectOption({ index: isCodingQ ? 2 : 1 }).catch(() => {}));
         } else if (/citizenship|citizen.*country|dual.*national|national.*status/i.test(lbl)) {
           // Citizenship questions — select "United States" or "US Citizen"
           const opts = await el.locator("option").allTextContents();
@@ -1005,8 +1018,18 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             lbl,
           )
         ) {
-          // Screening yes/no textarea — answer affirmatively with brief context
-          await el.fill("Yes").catch(() => {});
+          // Screening yes/no textarea — honest: "No" for coding-specific, "Yes" for general
+          const isCodingQ =
+            /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production/i.test(
+              lbl,
+            );
+          await el
+            .fill(
+              isCodingQ
+                ? "No, but I use AI-assisted development tools (Claude Code, Copilot) and have shipped production features with them."
+                : "Yes",
+            )
+            .catch(() => {});
         } else {
           // Unknown textarea — leave blank (wrong content is worse than empty)
         }
@@ -1122,8 +1145,18 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
             lbl,
           )
         ) {
-          // Screening yes/no text input: "Do you have at least 3 years of X?" → "Yes"
-          await el.fill("Yes").catch(() => {});
+          // Screening yes/no text input — honest: "No" for coding-specific, "Yes" for general
+          const isCodingQ =
+            /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production/i.test(
+              lbl,
+            );
+          await el
+            .fill(
+              isCodingQ
+                ? "No — I use AI-assisted development tools and have shipped production features with them."
+                : "Yes",
+            )
+            .catch(() => {});
         } else if (
           /describe.*experience|your.*experience|tell.*us.*about|experience.*owning|experience.*with/i.test(
             lbl,
