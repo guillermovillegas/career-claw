@@ -449,7 +449,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
       if (isCheckbox) {
         if (
           /acknowledge/i.test(lbl) || // EEO acknowledgements
-          /consent|agree|terms|gdpr|privacy/i.test(lbl) // GDPR/consent
+          /consent|agree|terms|gdpr|privacy|^confirm$|^i confirm/i.test(lbl) // GDPR/consent/confirm
         ) {
           const checked = await el.isChecked().catch(() => false);
           if (!checked) {
@@ -926,7 +926,11 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await el
             .fill("https://myportfolio.vercel.app | https://github.com/janedoe")
             .catch(() => {});
-        } else if (/how did you (hear|find|learn)|how.*hear.*about/i.test(lbl)) {
+        } else if (
+          /how did you (hear|find|learn)|how.*hear.*about|how.*learn.*about|selected.*other.*how|tell us how you learned/i.test(
+            lbl,
+          )
+        ) {
           await el.fill("LinkedIn").catch(() => {});
         } else if (
           /how.*use.*ai|ai.*to apply|assisted.*by.*ai|used.*ai.*tools|ai.*help.*apply/i.test(lbl)
@@ -1113,7 +1117,7 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
         } else if (/end.*year|year.*end/i.test(lbl)) {
           // Leave blank (currently employed)
         } else if (
-          /current.*job.*title|previous.*job.*title|most recent.*title|what is your.*title|job title/i.test(
+          /current.*title|previous.*job.*title|most recent.*title|what is your.*title|job title/i.test(
             lbl,
           )
         ) {

@@ -329,13 +329,17 @@ export function checkUrlLiveness(urlStr, timeoutMs = 10000) {
       const url = new URL(urlStr);
       const lib = url.protocol === "https:" ? https : http;
       const isAshby = url.hostname.includes("ashbyhq.com");
+      const isGreenhouse =
+        url.hostname.includes("greenhouse.io") || url.hostname.includes("greenhouse.com");
+      // Use GET for Ashby (body check) and Greenhouse (redirect chain + body check)
+      const useGet = isAshby || isGreenhouse;
 
       const req = lib.request(
         {
           hostname: url.hostname,
           port: url.port || (url.protocol === "https:" ? 443 : 80),
           path: url.pathname + url.search,
-          method: isAshby ? "GET" : "HEAD",
+          method: useGet ? "GET" : "HEAD",
           headers: {
             "User-Agent":
               "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -360,6 +364,80 @@ export function checkUrlLiveness(urlStr, timeoutMs = 10000) {
             res.on("end", () => {
               if (/"posting"\s*:\s*null/.test(body) || /Job not found/i.test(body)) {
                 finish({ alive: false, status, reason: "Ashby posting removed (posting=null)" });
+              } else {
+                finish({ alive: true, status });
+              }
+            });
+            return;
+          }
+
+          if (isGreenhouse) {
+            // Greenhouse dead jobs: 302 → ?error=true, or 200 with canonical to ?error=true
+            // Follow one redirect level if 3xx
+            if (status >= 300 && status < 400 && location) {
+              try {
+                const nextUrl = new URL(location, urlStr);
+                if (
+                  nextUrl.searchParams.get("error") === "true" ||
+                  nextUrl.pathname === url.pathname.replace(/\/jobs\/.*/, "")
+                ) {
+                  finish({ alive: false, status, reason: `GH redirect to board: ${location}` });
+                  return;
+                }
+                // Follow the redirect
+                const lib2 = nextUrl.protocol === "https:" ? https : http;
+                const req2 = lib2.request(
+                  {
+                    hostname: nextUrl.hostname,
+                    port: nextUrl.port || (nextUrl.protocol === "https:" ? 443 : 80),
+                    path: nextUrl.pathname + nextUrl.search,
+                    method: "GET",
+                    headers: {
+                      "User-Agent":
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+                    },
+                    timeout: timeoutMs,
+                  },
+                  (res2) => {
+                    const loc2 = res2.headers.location || "";
+                    if (loc2.includes("error=true") || loc2.includes("not-found")) {
+                      finish({
+                        alive: false,
+                        status: res2.statusCode,
+                        reason: `GH redirect chain to error: ${loc2}`,
+                      });
+                      res2.resume();
+                      return;
+                    }
+                    let body = "";
+                    res2.on("data", (c) => (body += c.toString().slice(0, 5000)));
+                    res2.on("end", () => {
+                      if (/error=true/.test(body) && /canonical/.test(body)) {
+                        finish({
+                          alive: false,
+                          status: res2.statusCode,
+                          reason: "GH canonical error page",
+                        });
+                      } else {
+                        finish({ alive: true, status: res2.statusCode });
+                      }
+                    });
+                  },
+                );
+                req2.on("error", () => finish({ alive: true, status }));
+                req2.end();
+              } catch {
+                finish({ alive: true, status });
+              }
+              res.resume();
+              return;
+            }
+            // Non-redirect: check body for error indicators
+            let body = "";
+            res.on("data", (c) => (body += c.toString().slice(0, 5000)));
+            res.on("end", () => {
+              if (/error=true/.test(body) && /canonical/.test(body)) {
+                finish({ alive: false, status, reason: "GH error page (canonical)" });
               } else {
                 finish({ alive: true, status });
               }
