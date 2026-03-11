@@ -227,6 +227,9 @@ function detectPlatform(url) {
   if (/workable\.com/i.test(url)) {
     return "workable";
   }
+  if (/linkedin\.com/i.test(url)) {
+    return "linkedin";
+  }
   return null;
 }
 
@@ -2342,7 +2345,15 @@ async function submitGreenhouse(page, job, coverLetter) {
                 await el.fill("Central Time (CT) / America/Chicago").catch(() => {});
                 fixedCount++;
               } else if (/linkedin\s*profile|linkedin\s*url|linkedin/i.test(lbl)) {
-                await el.fill(FA.linkedin_url || "").catch(() => {});
+                // Some GH forms have controlled inputs that reject .fill() — use triple-click + type
+                await el.click().catch(() => {});
+                await el.press("Meta+a").catch(() => {});
+                await el.type(FA.linkedin_url || "", { delay: 10 }).catch(() => {});
+                // Fallback: also try fill if type didn't stick
+                const curVal = await el.inputValue().catch(() => "");
+                if (!curVal && FA.linkedin_url) {
+                  await el.fill(FA.linkedin_url).catch(() => {});
+                }
                 if (FA.linkedin_url) {
                   fixedCount++;
                 }
@@ -3380,8 +3391,8 @@ const toSubmit = applications.filter((a) => {
   if (!platform || (a.match_score || 0) < MIN_SCORE) {
     return false;
   }
-  // Lever uses hCaptcha on all forms — skip auto-submit (as of 2026-03)
-  if (platform === "lever") {
+  // Lever uses hCaptcha, LinkedIn requires Easy Apply — skip auto-submit
+  if (platform === "lever" || platform === "linkedin") {
     return false;
   }
   // Skip if already failed auto-submit (notes contain failure marker)
