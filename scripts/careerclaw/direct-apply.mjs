@@ -426,7 +426,7 @@ const [allJobs, allApps] = await Promise.all([
   sbGetAll(
     "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,location,salary_min,salary_max&order=match_score.desc",
   ),
-  sbGetAll("/rest/v1/applications?select=job_id"),
+  sbGetAll("/rest/v1/applications?select=id,job_id,status"),
 ]);
 
 if (!Array.isArray(allJobs)) {
@@ -434,7 +434,15 @@ if (!Array.isArray(allJobs)) {
   process.exit(1);
 }
 
-const appliedIds = new Set(allApps.map((a) => a.job_id));
+// Jobs with non-interested apps are "already handled" — skip them
+const appliedIds = new Set(allApps.filter((a) => a.status !== "interested").map((a) => a.job_id));
+// Jobs with interested apps need their existing app record updated (not a new POST)
+const interestedAppByJobId = new Map();
+for (const a of allApps) {
+  if (a.status === "interested" && a.job_id && !interestedAppByJobId.has(a.job_id)) {
+    interestedAppByJobId.set(a.job_id, a.id);
+  }
+}
 
 // ─── 30-day dedup: prevent re-applying to same company+role within 30 days ──
 const DEDUP_DAYS = 30;
@@ -611,10 +619,31 @@ for (let i = 0; i < candidates.length; i++) {
 
   console.log("  Cover letter preview:", letter.substring(0, 80).replace(/\n/g, " ") + "...");
 
-  const res = await sbPost("/rest/v1/applications", appData);
+  // If an interested app already exists (from scraper), PATCH it; otherwise POST new
+  const existingAppId = interestedAppByJobId.get(j.id);
+  let res;
+  if (existingAppId) {
+    res = await request(SUPABASE_URL + `/rest/v1/applications?id=eq.${existingAppId}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        cover_letter: letter,
+        match_score: j.match_score,
+        priority,
+        notes: `Auto-applied ${TODAY}`,
+      }),
+    });
+  } else {
+    res = await sbPost("/rest/v1/applications", appData);
+  }
 
-  if (res.status === 201) {
-    console.log("  ✓ Saved to DB");
+  if (res.status === 201 || res.status === 204) {
+    console.log(`  ✓ ${existingAppId ? "Updated" : "Saved"} to DB`);
     saved++;
     perJobResults.push({
       title: j.title,
