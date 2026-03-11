@@ -457,6 +457,88 @@ export async function getApplicationFormQA(
   return [];
 }
 
+// ─── Active Responses (Interview Tracking) ─────────────────────────
+
+/** Application with job data including URL (for response cards) */
+type ApplicationWithJobUrl = Application & {
+  jobs: Pick<
+    Job,
+    "title" | "company" | "location" | "salary_min" | "salary_max" | "work_mode" | "url"
+  > | null;
+};
+
+/** Apps in active stages (applied+) with their communication logs, sorted by urgency */
+export type ResponseWithComms = ApplicationWithJobUrl & {
+  comms: CommunicationLog[];
+  events: CalendarEvent[];
+};
+
+export async function getActiveResponses(): Promise<ResponseWithComms[]> {
+  // Fetch apps in non-terminal, post-interested stages
+  const { data: rawApps, error } = await supabase
+    .from("applications")
+    .select("*, jobs(title, company, location, salary_min, salary_max, work_mode, url)")
+    .in("status", ["applied", "phone_screen", "interview", "final", "offer", "hired"])
+    .order("updated_at", { ascending: false });
+
+  if (error) {throw error;}
+  const apps = (rawApps ?? []) as unknown as ApplicationWithJobUrl[];
+  if (apps.length === 0) {return [];}
+
+  const appIds = apps.map((a) => a.id);
+
+  // Fetch all communication logs for these apps
+  const { data: rawComms } = await supabase
+    .from("communication_log")
+    .select("*")
+    .eq("entity_type", "application")
+    .in("entity_id", appIds)
+    .order("created_at", { ascending: false });
+  const commsData = (rawComms ?? []) as CommunicationLog[];
+
+  // Fetch all calendar events for these apps
+  const { data: rawEvents } = await supabase
+    .from("calendar_events")
+    .select("*")
+    .in("application_id", appIds)
+    .order("start_time", { ascending: true });
+  const eventsData = (rawEvents ?? []) as CalendarEvent[];
+
+  const commsMap = new Map<string, CommunicationLog[]>();
+  for (const c of commsData) {
+    const arr = commsMap.get(c.entity_id) ?? [];
+    arr.push(c);
+    commsMap.set(c.entity_id, arr);
+  }
+
+  const eventsMap = new Map<string, CalendarEvent[]>();
+  for (const e of eventsData) {
+    if (e.application_id) {
+      const arr = eventsMap.get(e.application_id) ?? [];
+      arr.push(e);
+      eventsMap.set(e.application_id, arr);
+    }
+  }
+
+  // Sort: interview/phone_screen/final/offer first, then by most recent update
+  const STAGE_URGENCY: Record<string, number> = {
+    offer: 6, final: 5, interview: 4, phone_screen: 3, hired: 2, applied: 1,
+  };
+
+  return apps
+    .map((app) => ({
+      ...app,
+      comms: commsMap.get(app.id) ?? [],
+      events: eventsMap.get(app.id) ?? [],
+    }))
+    .toSorted((a, b) => {
+      const urgA = STAGE_URGENCY[a.status] ?? 0;
+      const urgB = STAGE_URGENCY[b.status] ?? 0;
+      if (urgA !== urgB) {return urgB - urgA;}
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
+}
+
 function parseLogDetails(
   details: Application["notes"] | AutomationLog["details"]
 ): Record<string, unknown> | null {

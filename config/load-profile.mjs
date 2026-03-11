@@ -100,6 +100,7 @@ export function getCoverLetterConfig() {
 /**
  * Build a cover letter prompt for LLM generation.
  * Randomly selects 3 of 5 background bullets to force varied proof points across letters.
+ * Uses mandatory first-sentence templates to force opener diversity.
  * Used by direct-apply.mjs and fix-cover-letters.mjs.
  */
 export function buildCoverLetterPrompt(title, company, mode) {
@@ -110,25 +111,30 @@ export function buildCoverLetterPrompt(title, company, mode) {
   const shuffled = bullets.toSorted(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, Math.min(3, shuffled.length)).join("\n");
 
-  // Random opener style to force variety across letters
-  const openers = [
-    `Start with a concrete metric from the FIRST bullet below — lead with a number.`,
-    `Open with "At [previous company]," then state a specific result with numbers.`,
-    `Start by naming what you built or shipped, then the measurable outcome.`,
-    `Lead with "When [situation], [what you did], resulting in [metric]."`,
-    `Open with the business problem you solved, then the quantified result.`,
-    `Start with "Turning [challenge] into [outcome]" using a specific number.`,
-    `Lead with a team or portfolio scale number, then what you delivered.`,
+  // Pick the FIRST bullet as the mandatory opener source — since bullets are shuffled,
+  // this rotates which achievement leads, forcing 5 distinct opener families
+  const leadBullet = shuffled[0] || "";
+  // Strip leading "- " from bullet
+  const leadFact = leadBullet.replace(/^-\s*/, "").trim();
+
+  // Mandatory first-sentence templates — model MUST use one of these verbatim as sentence 1.
+  // Each template references the lead bullet's content differently.
+  const templates = [
+    `"At [company from the FIRST bullet], ${leadFact.split(",")[0].toLowerCase().includes("built") || leadFact.split(",")[0].toLowerCase().includes("led") || leadFact.split(",")[0].toLowerCase().includes("managed") ? leadFact.split(",")[0] : "I " + leadFact.split(",")[0].toLowerCase()}" — use this fact as the literal first sentence, then connect to ${company}.`,
+    `Write the first sentence as: "[A number from the first bullet] [what was achieved]" — extract the key metric from: ${leadFact}. Then connect to the ${title} role at ${company}.`,
+    `The first sentence MUST begin with "When" followed by a situation from this fact: ${leadFact}. State the result with a number. Then connect to ${company}.`,
+    `Begin sentence 1 with "Turning" followed by a challenge/outcome from: ${leadFact}. Include a specific number. Then name ${company}.`,
+    `Start sentence 1 with the business context, not "I": rephrase this fact as "[Context/scale], [what I delivered]": ${leadFact}. Then connect to ${company}.`,
   ];
-  const openerHint = openers[Math.floor(Math.random() * openers.length)];
+  const mandatoryOpener = templates[Math.floor(Math.random() * templates.length)];
 
   return `Write a cover letter (150-200 words) for ${cl.fullName} applying to: ${title} at ${company} (${mode}).
 
 STRUCTURE — three paragraphs, 150-200 words total:
 
-Paragraph 1 (4-5 sentences): ${openerHint} Connect the most relevant achievement to the ${title} role at ${company}. Do NOT start with "I" as the first word. Name "${company}" at least once. Use exact numbers from the background below.
+Paragraph 1 (4-5 sentences): ${mandatoryOpener} Do NOT start with "I" as the first word. Name "${company}" at least once. Use exact numbers from the background below.
 
-Paragraph 2 (4-5 sentences): A second, DIFFERENT proof point that shows range. Use at least 2 different metrics/numbers. If paragraph 1 used AI/ML experience, use business/portfolio here (or vice versa). Connect it to what a ${title} at ${company} would need.
+Paragraph 2 (4-5 sentences): Pick a DIFFERENT bullet from paragraph 1. Use at least 2 different metrics/numbers. If paragraph 1 used AI/ML experience, use business/portfolio here (or vice versa). Connect it to what a ${title} at ${company} would need.
 
 Paragraph 3 (2-3 sentences): Forward-looking close. Reference ${company} by name again. End the letter with the last sentence — NO signature, NO name, NO sign-off after the final sentence.
 
@@ -150,5 +156,6 @@ STRICT RULES — violating ANY makes the output unusable:
 9. Use 2+ different concrete metrics (percentages, dollar amounts, team sizes, etc.).
 10. Write in first person. Direct tone. Varied sentence length. No fluff.
 11. Output ONLY the letter text. No markdown, no quotes, no preamble, no labels.
-12. The letter MUST be 150-200 words. Count carefully. Shorter or longer is unusable.`;
+12. The letter MUST be 150-200 words. Count carefully. Shorter or longer is unusable.
+13. The FIRST sentence must follow the opener template above EXACTLY. Do not ignore it.`;
 }

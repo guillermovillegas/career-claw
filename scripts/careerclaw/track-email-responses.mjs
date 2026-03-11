@@ -94,6 +94,26 @@ function sbGet(path) {
   }).then((r) => JSON.parse(r.body));
 }
 
+/** Paginated fetch — PostgREST caps at 1000 rows per request */
+async function sbGetAll(basePath) {
+  const PAGE_SIZE = 1000;
+  let all = [];
+  let offset = 0;
+  while (true) {
+    const sep = basePath.includes("?") ? "&" : "?";
+    const page = await sbGet(`${basePath}${sep}limit=${PAGE_SIZE}&offset=${offset}`);
+    if (!Array.isArray(page) || page.length === 0) {
+      break;
+    }
+    all = all.concat(page);
+    if (page.length < PAGE_SIZE) {
+      break;
+    }
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 function sbPost(path, data) {
   return request(SUPABASE_URL + path, {
     method: "POST",
@@ -301,13 +321,12 @@ console.log(`Dry run:  ${DRY_RUN}`);
 console.log(`Limit:    ${EMAIL_LIMIT}`);
 console.log("");
 
-// Fetch applications and jobs for matching
+// Fetch ALL applications and jobs (paginated — PostgREST caps at 1000 rows)
 const [apps, jobs] = await Promise.all([
-  sbGet(
-    "/rest/v1/applications?select=id,job_id,status,platform,notes&order=created_at.desc&limit=2000",
-  ),
-  sbGet("/rest/v1/jobs?select=id,title,company,url&limit=2000"),
+  sbGetAll("/rest/v1/applications?select=id,job_id,status,platform,notes&order=created_at.desc"),
+  sbGetAll("/rest/v1/jobs?select=id,title,company,url"),
 ]);
+console.log(`Loaded ${apps.length} applications, ${jobs.length} jobs`);
 
 const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
 

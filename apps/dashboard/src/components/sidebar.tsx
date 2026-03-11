@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/daily-summary", label: "Daily Summary", icon: CalendarIcon },
   { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
   { href: "/applications", label: "Applications", icon: ClipboardIcon },
+  { href: "/responses", label: "Responses", icon: InboxIcon },
   { href: "/proposals", label: "Proposals", icon: SendIcon },
   { href: "/logs", label: "Logs", icon: TerminalIcon },
 ] as const;
@@ -144,6 +145,25 @@ function SendIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
       />
+    </svg>
+  );
+}
+
+function InboxIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h2.21a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859M12 3v8.25m0 0-3-3m3 3 3-3M2.25 18.75h19.5"
+      />
+      <rect x="2.25" y="6.75" width="19.5" height="14.25" rx="2.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
