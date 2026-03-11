@@ -103,9 +103,9 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-700/50 bg-slate-800/60">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+    <div className="rounded-lg border border-neutral-800 bg-neutral-950 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-neutral-800 bg-neutral-900/50">
+        <h2 className="text-[10px] font-medium uppercase tracking-widest text-neutral-500">
           {title}
         </h2>
       </div>
@@ -129,28 +129,28 @@ function ApplicationHeader({
       <div className="flex items-center gap-1.5 text-xs">
         <Link
           href="/jobs"
-          className="text-slate-500 hover:text-slate-300 transition-colors"
+          className="text-neutral-500 hover:text-neutral-300 transition-colors"
         >
           Jobs
         </Link>
-        <span className="text-slate-700">/</span>
+        <span className="text-neutral-700">/</span>
         <Link
           href="/applications"
-          className="text-slate-500 hover:text-slate-300 transition-colors"
+          className="text-neutral-500 hover:text-neutral-300 transition-colors"
         >
           Applications
         </Link>
-        <span className="text-slate-700">/</span>
-        <span className="text-slate-400">{job?.company ?? "Unknown"}</span>
+        <span className="text-neutral-700">/</span>
+        <span className="text-neutral-400">{job?.company ?? "Unknown"}</span>
       </div>
 
       {/* Title row */}
       <div className="flex items-start gap-3 flex-wrap">
         <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-semibold text-slate-100 leading-tight">
+          <h1 className="text-lg font-semibold text-white leading-tight">
             {job?.title ?? "Unknown Role"}
           </h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-sm text-neutral-400 mt-0.5">
             {job?.company ?? "Unknown Company"}
             {job?.location ? ` -- ${job.location}` : ""}
           </p>
@@ -163,7 +163,7 @@ function ApplicationHeader({
               href={job.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-500 hover:text-emerald-400 transition-colors"
+              className="text-neutral-500 hover:text-emerald-400 transition-colors"
               title="Open job posting"
             >
               <ExternalLinkIcon className="h-4 w-4" />
@@ -197,7 +197,7 @@ function StatusPipeline({ currentStatus }: { currentStatus: string }) {
   const currentIdx = STATUS_PIPELINE.findIndex((s) => s.key === currentStatus);
 
   const activeColors: Record<string, string> = {
-    slate: "bg-slate-500 text-white",
+    slate: "bg-neutral-500 text-white",
     blue: "bg-blue-500 text-white",
     cyan: "bg-cyan-500 text-white",
     amber: "bg-amber-500 text-white",
@@ -206,7 +206,7 @@ function StatusPipeline({ currentStatus }: { currentStatus: string }) {
   };
 
   const passedColors: Record<string, string> = {
-    slate: "bg-slate-500/30 text-slate-400",
+    slate: "bg-neutral-500/30 text-neutral-400",
     blue: "bg-blue-500/20 text-blue-400",
     cyan: "bg-cyan-500/20 text-cyan-400",
     amber: "bg-amber-500/20 text-amber-400",
@@ -227,7 +227,7 @@ function StatusPipeline({ currentStatus }: { currentStatus: string }) {
         } else if (isPassed) {
           className += passedColors[stage.color];
         } else {
-          className += "bg-slate-800/60 text-slate-600";
+          className += "bg-neutral-800/60 text-neutral-600";
         }
 
         return (
@@ -236,7 +236,7 @@ function StatusPipeline({ currentStatus }: { currentStatus: string }) {
             {idx < STATUS_PIPELINE.length - 1 && (
               <span
                 className={`w-4 h-px ${
-                  isPassed || isActive ? "bg-slate-500" : "bg-slate-800"
+                  isPassed || isActive ? "bg-neutral-500" : "bg-neutral-800"
                 }`}
               />
             )}
@@ -246,12 +246,12 @@ function StatusPipeline({ currentStatus }: { currentStatus: string }) {
 
       {terminalStatus && (
         <>
-          <span className="w-6 h-px bg-slate-700 mx-1" />
+          <span className="w-6 h-px bg-neutral-700 mx-1" />
           <span
             className={`px-3 py-1.5 rounded-full text-xs font-medium ring-2 ring-offset-1 ring-offset-slate-900 ${
               terminalStatus.color === "rose"
                 ? "bg-rose-500 text-white ring-rose-500/50"
-                : "bg-slate-500 text-white ring-slate-500/50"
+                : "bg-neutral-500 text-white ring-neutral-500/50"
             }`}
           >
             {terminalStatus.label}
@@ -370,14 +370,14 @@ function ApplicationFormFields({
         {/* Standard fields by category */}
         {Array.from(categories.entries()).map(([category, categoryFields]) => (
           <div key={category}>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
               {category}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
               {categoryFields.map((f) => (
                 <div key={f.label} className="flex justify-between gap-2 text-xs py-0.5">
-                  <span className="text-slate-500 shrink-0">{f.label}</span>
-                  <span className="text-slate-300 text-right truncate">{f.value}</span>
+                  <span className="text-neutral-500 shrink-0">{f.label}</span>
+                  <span className="text-neutral-300 text-right truncate">{f.value}</span>
                 </div>
               ))}
             </div>
@@ -387,19 +387,19 @@ function ApplicationFormFields({
         {/* Form Q&A from automation logs */}
         {formQA.length > 0 && (
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
               Custom Questions
             </h3>
             <div className="space-y-2">
               {formQA.map((qa, idx) => (
                 <div
                   key={idx}
-                  className="rounded-lg bg-slate-900/60 p-2.5"
+                  className="rounded-lg bg-neutral-900/60 p-2.5"
                 >
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-neutral-500">
                     Q: {qa.question}
                   </p>
-                  <p className="text-xs text-slate-300 mt-0.5">
+                  <p className="text-xs text-neutral-300 mt-0.5">
                     A: {qa.answer || "(empty)"}
                   </p>
                 </div>
@@ -473,21 +473,21 @@ function NotesAndLearningsCard({
       <div className="space-y-4">
         {/* Submission Method */}
         <div>
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
             Submission
           </h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
             <div className="flex justify-between gap-2">
-              <span className="text-slate-500">Method</span>
-              <span className="text-slate-300">{submissionMethod}</span>
+              <span className="text-neutral-500">Method</span>
+              <span className="text-neutral-300">{submissionMethod}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-slate-500">ATS</span>
-              <span className="text-slate-300">{ats}</span>
+              <span className="text-neutral-500">ATS</span>
+              <span className="text-neutral-300">{ats}</span>
             </div>
             {failedLogs.length > 0 && (
               <div className="flex justify-between gap-2 col-span-2">
-                <span className="text-slate-500">Failed Attempts</span>
+                <span className="text-neutral-500">Failed Attempts</span>
                 <span className="text-rose-400">{failedLogs.length}</span>
               </div>
             )}
@@ -497,14 +497,14 @@ function NotesAndLearningsCard({
         {/* Notes */}
         {noteEntries.length > 0 && (
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
               Notes
             </h3>
             <ul className="space-y-1.5">
               {noteEntries.map((note, i) => (
                 <li
                   key={i}
-                  className="text-xs text-slate-400 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:h-1 before:w-1 before:rounded-full before:bg-slate-600"
+                  className="text-xs text-neutral-400 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:h-1 before:w-1 before:rounded-full before:bg-neutral-600"
                 >
                   {note}
                 </li>
@@ -516,7 +516,7 @@ function NotesAndLearningsCard({
         {/* Failure details */}
         {failedLogs.length > 0 && (
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
               Failure Logs
             </h3>
             <div className="space-y-1.5">
@@ -528,7 +528,7 @@ function NotesAndLearningsCard({
                   <p className="text-xs text-rose-400">
                     {log.error_message ?? "Unknown error"}
                   </p>
-                  <p className="text-[10px] text-slate-600 mt-0.5">
+                  <p className="text-[10px] text-neutral-600 mt-0.5">
                     {formatDateTime(log.created_at)}
                     {log.execution_time_ms != null && ` -- ${log.execution_time_ms}ms`}
                   </p>
@@ -539,11 +539,11 @@ function NotesAndLearningsCard({
         )}
 
         {/* Bot Improvement Ideas */}
-        <div className="border-t border-slate-700/50 pt-3">
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-slate-600 mb-2">
+        <div className="border-t border-neutral-700/50 pt-3">
+          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
             Automation Methods & Improvements
           </h3>
-          <div className="space-y-2 text-xs text-slate-500">
+          <div className="space-y-2 text-xs text-neutral-500">
             <div className="flex items-start gap-2">
               <MethodBadge label="Current" color="emerald" />
               <span>
@@ -596,7 +596,7 @@ function MethodBadge({ label, color }: { label: string; color: string }) {
   return (
     <span
       className={`shrink-0 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
-        styles[color] ?? "bg-slate-700/60 text-slate-400"
+        styles[color] ?? "bg-neutral-700/60 text-neutral-400"
       }`}
     >
       {label}
@@ -654,7 +654,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
           <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/15 text-blue-400">
             {app.cover_letter.length.toLocaleString()} chars
           </span>
-          <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+          <p className="mt-1 text-xs text-neutral-500 line-clamp-2">
             {preview}{preview.length < app.cover_letter.length ? "..." : ""}
           </p>
         </div>
@@ -675,7 +675,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       time: formatDate(app.application_date),
       sortTime: new Date(app.application_date).getTime(),
       children: (
-        <p className="text-xs text-slate-500">Formal submission date</p>
+        <p className="text-xs text-neutral-500">Formal submission date</p>
       ),
     });
   }
@@ -715,12 +715,12 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       children: (
         <div>
           {log.subject && (
-            <p className="text-xs font-medium text-slate-300">{log.subject}</p>
+            <p className="text-xs font-medium text-neutral-300">{log.subject}</p>
           )}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {log.sentiment && <SentimentBadge sentiment={log.sentiment} />}
             {log.content_summary && (
-              <p className="text-xs text-slate-500 line-clamp-1">
+              <p className="text-xs text-neutral-500 line-clamp-1">
                 {log.content_summary}
               </p>
             )}
@@ -739,7 +739,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       time: formatDateTime(log.created_at),
       sortTime: new Date(log.created_at).getTime(),
       children: (
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-neutral-500">
           {log.platform ? `${log.platform} -- ` : ""}
           {log.success ? "Success" : "Failed"}
           {log.error_message ? ` -- ${log.error_message}` : ""}
@@ -768,7 +768,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
         </TimelineEvent>
       ))}
       {entries.length === 0 && (
-        <p className="text-xs text-slate-600">No timeline events yet.</p>
+        <p className="text-xs text-neutral-600">No timeline events yet.</p>
       )}
     </ol>
   );
@@ -786,26 +786,26 @@ function CoverLetterCard({ coverLetter }: { coverLetter: string }) {
   const charCount = coverLetter.length;
 
   return (
-    <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-700/50 bg-slate-800/60 flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+    <div className="rounded-xl border border-neutral-700/50 bg-neutral-800/40 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-neutral-700/50 bg-neutral-800/60 flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
           Cover Letter
         </h2>
         <div className="flex items-center gap-2">
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-700/60 text-slate-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/60 text-neutral-400">
             {charCount.toLocaleString()} chars
           </span>
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-700/60 text-slate-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/60 text-neutral-400">
             {wordCount.toLocaleString()} words
           </span>
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-700/60 text-slate-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/60 text-neutral-400">
             {paragraphCount} para{paragraphCount !== 1 ? "s" : ""}
           </span>
           <CopyButton text={coverLetter} />
         </div>
       </div>
       <div className="p-4">
-        <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
+        <p className="text-sm text-neutral-300 leading-relaxed whitespace-pre-wrap break-words">
           {coverLetter}
         </p>
       </div>
@@ -838,7 +838,7 @@ function CompanyInfoSidebar({
         </DetailRow>
         <DetailRow label="Job Type" hide={!job?.job_type}>
           {job?.job_type && (
-            <span className="inline-flex rounded-full bg-slate-700/60 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-300">
+            <span className="inline-flex rounded-full bg-neutral-700/60 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-300">
               {job.job_type}
             </span>
           )}
@@ -851,7 +851,7 @@ function CompanyInfoSidebar({
                 href={job.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-slate-500 hover:text-emerald-400 transition-colors"
+                className="text-neutral-500 hover:text-emerald-400 transition-colors"
                 title="Open posting"
               >
                 <ExternalLinkIcon className="h-3 w-3" />
@@ -862,7 +862,7 @@ function CompanyInfoSidebar({
         <DetailRow label="Location" value={job?.location ?? null} hide={!job?.location} />
         <DetailRow label="Posted" value={formatDate(job?.posting_date)} hide={!job?.posting_date} />
         <DetailRow label="Deadline" hide={!job?.deadline}>
-          <span className={`text-xs ${isDeadlinePast ? "text-rose-400" : "text-slate-300"}`}>
+          <span className={`text-xs ${isDeadlinePast ? "text-rose-400" : "text-neutral-300"}`}>
             {formatDate(job?.deadline)}
             {isDeadlinePast && (
               <span className="ml-1.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-rose-500/15 text-rose-400">
@@ -930,11 +930,11 @@ function DescriptionSnippet({ text }: { text: string }) {
   const isTruncated = text.length > 500;
 
   return (
-    <div className="space-y-1 border-t border-slate-700/50 pt-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+    <div className="space-y-1 border-t border-neutral-700/50 pt-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600">
         Description
       </p>
-      <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap break-words">
+      <p className="text-xs text-neutral-400 leading-relaxed whitespace-pre-wrap break-words">
         {snippet}
         {isTruncated ? "..." : ""}
       </p>
@@ -950,24 +950,24 @@ function CommunicationLogTable({ logs }: { logs: CommunicationLog[] }) {
       {logs.map((log) => (
         <div
           key={log.id}
-          className="rounded-lg bg-slate-900/60 p-2.5 space-y-1"
+          className="rounded-lg bg-neutral-900/60 p-2.5 space-y-1"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <DirectionBadge direction={log.direction} />
-              <span className="text-[10px] text-slate-500 capitalize">
+              <span className="text-[10px] text-neutral-500 capitalize">
                 {log.channel.replace(/_/g, " ")}
               </span>
             </div>
-            <span className="text-[10px] text-slate-600 tabular-nums">
+            <span className="text-[10px] text-neutral-600 tabular-nums">
               {formatDate(log.created_at)}
             </span>
           </div>
           {log.subject && (
-            <p className="text-xs text-slate-300 truncate">{log.subject}</p>
+            <p className="text-xs text-neutral-300 truncate">{log.subject}</p>
           )}
           {log.content_summary && (
-            <p className="text-xs text-slate-500 line-clamp-2">
+            <p className="text-xs text-neutral-500 line-clamp-2">
               {log.content_summary}
             </p>
           )}
@@ -985,7 +985,7 @@ function CommunicationLogTable({ logs }: { logs: CommunicationLog[] }) {
 type DotColor = "slate" | "blue" | "emerald" | "amber" | "violet" | "orange" | "rose";
 
 const DOT_COLORS: Record<DotColor, string> = {
-  slate: "bg-slate-600 ring-slate-700",
+  slate: "bg-neutral-600 ring-neutral-700",
   blue: "bg-blue-500 ring-blue-800",
   emerald: "bg-emerald-500 ring-emerald-800",
   amber: "bg-amber-500 ring-amber-800",
@@ -1015,16 +1015,16 @@ function TimelineEvent({
           className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ring-2 ${DOT_COLORS[color]}`}
         />
         {!isLast && (
-          <span className="w-px grow border-l border-slate-700/50 my-1" />
+          <span className="w-px grow border-l border-neutral-700/50 my-1" />
         )}
       </div>
 
       {/* Content */}
       <div className={`pb-4 min-w-0 flex-1 ${isLast ? "pb-0" : ""}`}>
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-xs font-medium text-slate-300">{title}</span>
+          <span className="text-xs font-medium text-neutral-300">{title}</span>
           {time && (
-            <span className="tabular-nums text-xs text-slate-500">{time}</span>
+            <span className="tabular-nums text-xs text-neutral-500">{time}</span>
           )}
         </div>
         {children && <div className="mt-0.5">{children}</div>}
@@ -1037,7 +1037,7 @@ function TimelineEvent({
 
 function PlatformBadge({ platform }: { platform: string }) {
   return (
-    <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize bg-slate-700/60 text-slate-400">
+    <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize bg-neutral-700/60 text-neutral-400">
       {platform}
     </span>
   );
@@ -1052,7 +1052,7 @@ function WorkModeBadge({ mode }: { mode: string }) {
   return (
     <span
       className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${
-        styles[mode] ?? "bg-slate-700 text-slate-300 border-slate-600"
+        styles[mode] ?? "bg-neutral-700 text-neutral-300 border-neutral-600"
       }`}
     >
       {mode}
@@ -1063,13 +1063,13 @@ function WorkModeBadge({ mode }: { mode: string }) {
 function SentimentBadge({ sentiment }: { sentiment: string }) {
   const styles: Record<string, string> = {
     positive: "bg-emerald-500/15 text-emerald-400",
-    neutral: "bg-slate-700/60 text-slate-400",
+    neutral: "bg-neutral-700/60 text-neutral-400",
     negative: "bg-rose-500/15 text-rose-400",
   };
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-        styles[sentiment] ?? "bg-slate-700/60 text-slate-400"
+        styles[sentiment] ?? "bg-neutral-700/60 text-neutral-400"
       }`}
     >
       {sentiment}
@@ -1100,7 +1100,7 @@ function FollowupDate({ date, status }: { date: string; status: string }) {
   return (
     <span
       className={`text-xs ${
-        isOverdue ? "font-semibold text-rose-400" : "text-slate-300"
+        isOverdue ? "font-semibold text-rose-400" : "text-neutral-300"
       }`}
     >
       {formatDate(date)}
@@ -1129,8 +1129,8 @@ function DetailRow({
   }
   return (
     <div className="flex justify-between gap-2 text-xs">
-      <dt className="text-slate-500 shrink-0">{label}</dt>
-      <dd className="text-slate-300 text-right">
+      <dt className="text-neutral-500 shrink-0">{label}</dt>
+      <dd className="text-neutral-300 text-right">
         {children ?? value ?? "--"}
       </dd>
     </div>

@@ -55,7 +55,7 @@ function getDateKey(dateStr: string): string {
 interface DetailMetric {
   label: string;
   value: string;
-  accent?: "emerald" | "rose" | "amber" | "blue" | "slate";
+  accent?: "white" | "dark" | "mid" | "light" | "muted";
 }
 
 function parseDetailMetrics(details: Json): DetailMetric[] {
@@ -76,7 +76,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Jobs",
       value: `${String(newJobs)} new${rangeStr}`,
-      accent: newJobs > 0 ? "emerald" : "slate",
+      accent: newJobs > 0 ? "white" : "muted",
     });
   }
 
@@ -87,7 +87,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Submitted",
       value: `${String(sub)} submitted${fail > 0 ? `, ${String(fail)} failed` : ""}`,
-      accent: fail > 0 ? "rose" : "emerald",
+      accent: fail > 0 ? "dark" : "white",
     });
   }
 
@@ -98,7 +98,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Processed",
       value: `${String(proc)} processed${newApps > 0 ? `, ${String(newApps)} new` : ""}`,
-      accent: "blue",
+      accent: "light",
     });
   }
 
@@ -112,7 +112,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Form QA",
       value: `${count} companies`,
-      accent: "amber",
+      accent: "mid",
     });
   }
 
@@ -123,7 +123,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "QA Audit",
       value: `${mode}: ${String(critical)} critical`,
-      accent: critical > 0 ? "rose" : "emerald",
+      accent: critical > 0 ? "dark" : "white",
     });
   }
 
@@ -133,7 +133,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Applications",
       value: `${String(count)} created`,
-      accent: "emerald",
+      accent: "white",
     });
   }
 
@@ -143,7 +143,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Cover Letters",
       value: `${String(count)} generated`,
-      accent: "blue",
+      accent: "light",
     });
   }
 
@@ -153,7 +153,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Proposals",
       value: `${String(count)} drafted`,
-      accent: "amber",
+      accent: "mid",
     });
   }
 
@@ -163,7 +163,7 @@ function parseDetailMetrics(details: Json): DetailMetric[] {
     metrics.push({
       label: "Duration",
       value: `${Number(seconds).toFixed(1)}s`,
-      accent: "slate",
+      accent: "muted",
     });
   }
 
@@ -332,14 +332,14 @@ export function LogsClient({
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-baseline justify-between">
-        <h1 className="text-sm font-semibold text-slate-300">Logs</h1>
-        <span className="text-[10px] text-slate-600">
+        <h1 className="text-sm font-semibold text-neutral-300">Logs</h1>
+        <span className="text-[10px] text-neutral-600">
           auto-refreshes on load
         </span>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-6 border-b border-slate-700/50">
+      <div className="flex items-center gap-6 border-b border-neutral-700/50">
         <TabButton
           active={activeTab === "automation"}
           label="Automation Logs"
@@ -372,7 +372,7 @@ export function LogsClient({
               placeholder="Platform..."
               value={platformFilter}
               onChange={(e) => setPlatformFilter(e.target.value)}
-              className="rounded border border-slate-700 bg-slate-800/80 px-2 py-1 text-xs text-slate-300 placeholder:text-slate-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-28"
+              className="rounded border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-xs text-neutral-300 placeholder:text-neutral-600 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 w-28"
             />
             <ToggleGroup
               value={successFilter}
@@ -438,21 +438,21 @@ export function LogsClient({
           <button
             type="button"
             onClick={clearFilters}
-            className="text-xs text-slate-400 hover:text-slate-200"
+            className="text-xs text-neutral-400 hover:text-neutral-200"
           >
             Clear
           </button>
         )}
 
-        <span className="ml-auto text-xs text-slate-500 tabular-nums">
+        <span className="ml-auto text-xs text-neutral-500 tabular-nums">
           {activeTab === "automation" ? (
             <>
               {filteredAutomation.length} shown
-              <span className="text-emerald-500 ml-1">
+              <span className="text-white ml-1">
                 {automationSuccessCount} ok
               </span>
               {automationFailCount > 0 && (
-                <span className="text-rose-500 ml-1">
+                <span className="text-neutral-500 ml-1">
                   {automationFailCount} fail
                 </span>
               )}
@@ -494,9 +494,9 @@ function AutomationTable({
 }) {
   if (groups.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-700/50 bg-slate-900 px-4 py-8 text-center">
-        <p className="text-sm text-slate-500">No automation runs match your filters.</p>
-        <p className="mt-1 text-xs text-slate-600">
+      <div className="rounded-lg border border-neutral-700/50 bg-neutral-900 px-4 py-8 text-center">
+        <p className="text-sm text-neutral-500">No automation runs match your filters.</p>
+        <p className="mt-1 text-xs text-neutral-600">
           Logs appear here after daily-search.sh or weekly-proposals.sh runs.
         </p>
       </div>
@@ -508,41 +508,41 @@ function AutomationTable({
       {groups.map((group) => (
         <div key={group.key}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
               {group.label}
             </span>
-            <span className="text-[10px] text-slate-700">
+            <span className="text-[10px] text-neutral-700">
               {group.logs.length} entries
             </span>
-            <div className="flex-1 border-b border-slate-800" />
+            <div className="flex-1 border-b border-neutral-800" />
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-700/50">
+          <div className="overflow-x-auto rounded-lg border border-neutral-700/50">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-700/50 bg-slate-800/80">
+              <thead className="border-b border-neutral-700/50 bg-neutral-800/80">
                 <tr>
                   <th className="w-6 px-2 py-2" />
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Time
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Action
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Platform
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     OK
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Details
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400 text-right">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400 text-right">
                     ms
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-neutral-800">
                 {group.logs.map((log) => (
                   <AutomationRow
                     key={log.id}
@@ -577,11 +577,11 @@ function AutomationRow({
     log.error_message != null;
 
   const metricAccentMap: Record<string, string> = {
-    emerald: "text-emerald-400",
-    rose: "text-rose-400",
-    amber: "text-amber-400",
-    blue: "text-blue-400",
-    slate: "text-slate-500",
+    white: "text-white",
+    dark: "text-neutral-500",
+    mid: "text-neutral-400",
+    light: "text-neutral-300",
+    muted: "text-neutral-500",
   };
 
   return (
@@ -589,46 +589,46 @@ function AutomationRow({
       <tr
         className={`transition-colors cursor-pointer ${
           expanded
-            ? "bg-slate-800/60"
-            : "hover:bg-slate-800/40"
+            ? "bg-neutral-800/60"
+            : "hover:bg-neutral-800/40"
         }`}
         onClick={onToggle}
       >
-        <td className="px-2 py-2 text-slate-600">
+        <td className="px-2 py-2 text-neutral-600">
           {hasDetails && (
             <ChevronIcon expanded={expanded} />
           )}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-500">
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-500">
           {formatRelativeTime(log.created_at)}
         </td>
         <td className="whitespace-nowrap px-3 py-2">
           <ActionBadge action={log.action_type} />
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-slate-500">
-          {log.platform ?? <span className="text-slate-700">--</span>}
+        <td className="whitespace-nowrap px-3 py-2 text-neutral-500">
+          {log.platform ?? <span className="text-neutral-700">--</span>}
         </td>
         <td className="px-3 py-2">
           <span
             className={`inline-block h-2 w-2 rounded-full ${
-              log.success ? "bg-emerald-400" : "bg-rose-400"
+              log.success ? "bg-neutral-300" : "bg-neutral-500"
             }`}
             title={log.success ? "Success" : log.error_message ?? "Failed"}
           />
         </td>
         <td className="max-w-sm px-3 py-2">
           {log.error_message ? (
-            <span className="truncate text-rose-400 block">
+            <span className="truncate text-neutral-500 block">
               {log.error_message}
             </span>
           ) : metrics.length > 0 ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
               {metrics.map((m) => (
                 <span key={m.label} className="whitespace-nowrap">
-                  <span className="text-slate-600">{m.label}: </span>
+                  <span className="text-neutral-600">{m.label}: </span>
                   <span
                     className={
-                      m.accent ? metricAccentMap[m.accent] : "text-slate-400"
+                      m.accent ? metricAccentMap[m.accent] : "text-neutral-400"
                     }
                   >
                     {m.value}
@@ -637,10 +637,10 @@ function AutomationRow({
               ))}
             </div>
           ) : (
-            <span className="text-slate-700">--</span>
+            <span className="text-neutral-700">--</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-right text-slate-600">
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-right text-neutral-600">
           {log.execution_time_ms != null
             ? log.execution_time_ms.toLocaleString()
             : "--"}
@@ -648,7 +648,7 @@ function AutomationRow({
       </tr>
       {expanded && hasDetails && (
         <tr>
-          <td colSpan={7} className="bg-slate-900/80 px-0 py-0">
+          <td colSpan={7} className="bg-neutral-900/80 px-0 py-0">
             <ExpandedDetails log={log} />
           </td>
         </tr>
@@ -661,25 +661,25 @@ function AutomationRow({
 
 function ExpandedDetails({ log }: { log: AutomationLog }) {
   return (
-    <div className="border-t border-slate-700/30 px-6 py-3 space-y-2">
+    <div className="border-t border-neutral-700/30 px-6 py-3 space-y-2">
       {/* Metadata row */}
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
         <div>
-          <span className="text-slate-600">ID: </span>
-          <span className="font-mono text-slate-500 text-[10px]">
+          <span className="text-neutral-600">ID: </span>
+          <span className="font-mono text-neutral-500 text-[10px]">
             {log.id}
           </span>
         </div>
         <div>
-          <span className="text-slate-600">Timestamp: </span>
-          <span className="text-slate-400">
+          <span className="text-neutral-600">Timestamp: </span>
+          <span className="text-neutral-400">
             {formatDateTime(log.created_at)}
           </span>
         </div>
         {log.execution_time_ms != null && (
           <div>
-            <span className="text-slate-600">Execution: </span>
-            <span className="text-slate-400 tabular-nums">
+            <span className="text-neutral-600">Execution: </span>
+            <span className="text-neutral-400 tabular-nums">
               {log.execution_time_ms.toLocaleString()}ms
             </span>
           </div>
@@ -688,11 +688,11 @@ function ExpandedDetails({ log }: { log: AutomationLog }) {
 
       {/* Error message */}
       {log.error_message && (
-        <div className="rounded border border-rose-700/30 bg-rose-900/10 px-3 py-2">
-          <span className="text-[10px] font-semibold uppercase text-rose-500">
+        <div className="rounded border border-neutral-700/30 bg-neutral-900/10 px-3 py-2">
+          <span className="text-[10px] font-semibold uppercase text-neutral-500">
             Error
           </span>
-          <p className="text-xs text-rose-300 mt-0.5 break-all">
+          <p className="text-xs text-neutral-500 mt-0.5 break-all">
             {log.error_message}
           </p>
         </div>
@@ -701,10 +701,10 @@ function ExpandedDetails({ log }: { log: AutomationLog }) {
       {/* JSON details */}
       {log.details != null && (
         <div>
-          <span className="text-[10px] font-semibold uppercase text-slate-600 block mb-1">
+          <span className="text-[10px] font-semibold uppercase text-neutral-600 block mb-1">
             Full Details
           </span>
-          <pre className="rounded bg-slate-950 border border-slate-800 px-3 py-2 text-[11px] text-slate-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed">
+          <pre className="rounded bg-neutral-950 border border-neutral-800 px-3 py-2 text-[11px] text-neutral-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed">
             {formatJsonDetails(log.details)}
           </pre>
         </div>
@@ -726,11 +726,11 @@ function CommunicationTable({
 }) {
   if (groups.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-700/50 bg-slate-900 px-4 py-8 text-center">
-        <p className="text-sm text-slate-500">
+      <div className="rounded-lg border border-neutral-700/50 bg-neutral-900 px-4 py-8 text-center">
+        <p className="text-sm text-neutral-500">
           No communication logs match your filters.
         </p>
-        <p className="mt-1 text-xs text-slate-600">
+        <p className="mt-1 text-xs text-neutral-600">
           Logs appear here when emails or messages are tracked.
         </p>
       </div>
@@ -742,41 +742,41 @@ function CommunicationTable({
       {groups.map((group) => (
         <div key={group.key}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
               {group.label}
             </span>
-            <span className="text-[10px] text-slate-700">
+            <span className="text-[10px] text-neutral-700">
               {group.logs.length} entries
             </span>
-            <div className="flex-1 border-b border-slate-800" />
+            <div className="flex-1 border-b border-neutral-800" />
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-700/50">
+          <div className="overflow-x-auto rounded-lg border border-neutral-700/50">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-700/50 bg-slate-800/80">
+              <thead className="border-b border-neutral-700/50 bg-neutral-800/80">
                 <tr>
                   <th className="w-6 px-2 py-2" />
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Time
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Dir
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Channel
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Entity
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Subject
                   </th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">
                     Sentiment
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-neutral-800">
                 {group.logs.map((log) => (
                   <CommRow
                     key={log.id}
@@ -813,15 +813,15 @@ function CommRow({
       <tr
         className={`transition-colors cursor-pointer ${
           expanded
-            ? "bg-slate-800/60"
-            : "hover:bg-slate-800/40"
+            ? "bg-neutral-800/60"
+            : "hover:bg-neutral-800/40"
         }`}
         onClick={onToggle}
       >
-        <td className="px-2 py-2 text-slate-600">
+        <td className="px-2 py-2 text-neutral-600">
           {hasDetails && <ChevronIcon expanded={expanded} />}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-500">
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-500">
           {formatRelativeTime(log.created_at)}
         </td>
         <td className="px-3 py-2">
@@ -831,11 +831,11 @@ function CommRow({
           <ChannelBadge channel={log.channel} />
         </td>
         <td className="px-3 py-2">
-          <span className="text-slate-500 capitalize">
+          <span className="text-neutral-500 capitalize">
             {log.entity_type}
           </span>
           <span
-            className="ml-1.5 font-mono text-[10px] text-slate-600"
+            className="ml-1.5 font-mono text-[10px] text-neutral-600"
             title={log.entity_id}
           >
             {log.entity_id.slice(0, 8)}
@@ -843,11 +843,11 @@ function CommRow({
         </td>
         <td className="max-w-xs px-3 py-2">
           {log.subject ? (
-            <span className="text-slate-300 truncate block">
+            <span className="text-neutral-300 truncate block">
               {log.subject}
             </span>
           ) : (
-            <span className="text-slate-700">--</span>
+            <span className="text-neutral-700">--</span>
           )}
         </td>
         <td className="px-3 py-2">
@@ -856,7 +856,7 @@ function CommRow({
       </tr>
       {expanded && hasDetails && (
         <tr>
-          <td colSpan={7} className="bg-slate-900/80 px-0 py-0">
+          <td colSpan={7} className="bg-neutral-900/80 px-0 py-0">
             <CommExpandedDetails log={log} />
           </td>
         </tr>
@@ -869,26 +869,26 @@ function CommRow({
 
 function CommExpandedDetails({ log }: { log: CommunicationLog }) {
   return (
-    <div className="border-t border-slate-700/30 px-6 py-3 space-y-2">
+    <div className="border-t border-neutral-700/30 px-6 py-3 space-y-2">
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
         <div>
-          <span className="text-slate-600">ID: </span>
-          <span className="font-mono text-slate-500 text-[10px]">
+          <span className="text-neutral-600">ID: </span>
+          <span className="font-mono text-neutral-500 text-[10px]">
             {log.id}
           </span>
         </div>
         <div>
-          <span className="text-slate-600">Timestamp: </span>
-          <span className="text-slate-400">
+          <span className="text-neutral-600">Timestamp: </span>
+          <span className="text-neutral-400">
             {formatDateTime(log.created_at)}
           </span>
         </div>
         <div>
-          <span className="text-slate-600">Entity: </span>
-          <span className="text-slate-400 capitalize">
+          <span className="text-neutral-600">Entity: </span>
+          <span className="text-neutral-400 capitalize">
             {log.entity_type}
           </span>
-          <span className="ml-1 font-mono text-slate-500 text-[10px]">
+          <span className="ml-1 font-mono text-neutral-500 text-[10px]">
             {log.entity_id}
           </span>
         </div>
@@ -896,10 +896,10 @@ function CommExpandedDetails({ log }: { log: CommunicationLog }) {
 
       {log.content_summary && (
         <div>
-          <span className="text-[10px] font-semibold uppercase text-slate-600 block mb-1">
+          <span className="text-[10px] font-semibold uppercase text-neutral-600 block mb-1">
             Summary
           </span>
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <p className="text-xs text-neutral-300 leading-relaxed">
             {log.content_summary}
           </p>
         </div>
@@ -907,10 +907,10 @@ function CommExpandedDetails({ log }: { log: CommunicationLog }) {
 
       {log.full_content && (
         <div>
-          <span className="text-[10px] font-semibold uppercase text-slate-600 block mb-1">
+          <span className="text-[10px] font-semibold uppercase text-neutral-600 block mb-1">
             Full Content
           </span>
-          <pre className="rounded bg-slate-950 border border-slate-800 px-3 py-2 text-[11px] text-slate-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed whitespace-pre-wrap">
+          <pre className="rounded bg-neutral-950 border border-neutral-800 px-3 py-2 text-[11px] text-neutral-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed whitespace-pre-wrap">
             {log.full_content}
           </pre>
         </div>
@@ -938,20 +938,20 @@ function TabButton({
       onClick={onClick}
       className={`relative pb-2 text-xs font-medium transition-colors ${
         active
-          ? "text-emerald-400"
-          : "text-slate-500 hover:text-slate-300"
+          ? "text-white"
+          : "text-neutral-500 hover:text-neutral-300"
       }`}
     >
       {label}
       <span
         className={`ml-1.5 tabular-nums ${
-          active ? "text-emerald-400/70" : "text-slate-600"
+          active ? "text-white/70" : "text-neutral-600"
         }`}
       >
         {count}
       </span>
       {active && (
-        <span className="absolute bottom-0 left-0 right-0 h-px bg-emerald-400" />
+        <span className="absolute bottom-0 left-0 right-0 h-px bg-neutral-300" />
       )}
     </button>
   );
@@ -974,7 +974,7 @@ function FilterSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded border border-slate-700 bg-slate-800/80 px-2 py-1 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="rounded border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-xs text-neutral-300 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
     >
       {!hideAllOption && <option value="">All {label}s</option>}
       {options.map((opt) => (
@@ -996,7 +996,7 @@ function ToggleGroup({
   onChange: (val: string) => void;
 }) {
   return (
-    <div className="flex rounded border border-slate-700 overflow-hidden">
+    <div className="flex rounded border border-neutral-700 overflow-hidden">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -1004,8 +1004,8 @@ function ToggleGroup({
           onClick={() => onChange(opt.value)}
           className={`px-2 py-1 text-xs transition-colors ${
             value === opt.value
-              ? "bg-slate-700 text-slate-200"
-              : "bg-slate-800/80 text-slate-500 hover:text-slate-300"
+              ? "bg-neutral-700 text-neutral-200"
+              : "bg-neutral-800/80 text-neutral-500 hover:text-neutral-300"
           }`}
         >
           {opt.label}
@@ -1017,19 +1017,19 @@ function ToggleGroup({
 
 function ActionBadge({ action }: { action: string }) {
   const styles: Record<string, string> = {
-    job_search: "bg-blue-500/15 text-blue-400",
-    application_submit: "bg-emerald-500/15 text-emerald-400",
-    proposal_submit: "bg-amber-500/15 text-amber-400",
-    email_send: "bg-violet-500/15 text-violet-400",
-    follow_up: "bg-orange-500/15 text-orange-400",
-    profile_update: "bg-cyan-500/15 text-cyan-400",
-    calendar_sync: "bg-pink-500/15 text-pink-400",
+    job_search: "bg-neutral-300/15 text-neutral-300",
+    application_submit: "bg-neutral-300/15 text-white",
+    proposal_submit: "bg-neutral-400/15 text-neutral-400",
+    email_send: "bg-neutral-500/15 text-neutral-400",
+    follow_up: "bg-neutral-500/15 text-neutral-400",
+    profile_update: "bg-neutral-400/15 text-neutral-400",
+    calendar_sync: "bg-neutral-500/15 text-neutral-400",
   };
 
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
-        styles[action] ?? "bg-slate-700/50 text-slate-400"
+        styles[action] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
       {formatLabel(action)}
@@ -1040,14 +1040,14 @@ function ActionBadge({ action }: { action: string }) {
 function DirectionBadge({ direction }: { direction: "outbound" | "inbound" }) {
   if (direction === "inbound") {
     return (
-      <span className="inline-flex items-center gap-1 text-blue-400" title="Inbound">
+      <span className="inline-flex items-center gap-1 text-neutral-300" title="Inbound">
         <ArrowDownIcon className="h-3 w-3" />
         <span className="text-[10px] font-medium">In</span>
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-emerald-400" title="Outbound">
+    <span className="inline-flex items-center gap-1 text-white" title="Outbound">
       <ArrowUpIcon className="h-3 w-3" />
       <span className="text-[10px] font-medium">Out</span>
     </span>
@@ -1056,19 +1056,19 @@ function DirectionBadge({ direction }: { direction: "outbound" | "inbound" }) {
 
 function ChannelBadge({ channel }: { channel: string }) {
   const styles: Record<string, string> = {
-    email: "bg-blue-500/15 text-blue-400",
-    linkedin: "bg-sky-500/15 text-sky-400",
-    upwork: "bg-emerald-500/15 text-emerald-400",
-    fiverr: "bg-green-500/15 text-green-400",
-    phone: "bg-amber-500/15 text-amber-400",
-    video: "bg-violet-500/15 text-violet-400",
-    in_person: "bg-orange-500/15 text-orange-400",
+    email: "bg-neutral-300/15 text-neutral-300",
+    linkedin: "bg-neutral-400/15 text-neutral-400",
+    upwork: "bg-neutral-300/15 text-white",
+    fiverr: "bg-neutral-300/15 text-neutral-300",
+    phone: "bg-neutral-400/15 text-neutral-400",
+    video: "bg-neutral-500/15 text-neutral-400",
+    in_person: "bg-neutral-500/15 text-neutral-400",
   };
 
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
-        styles[channel] ?? "bg-slate-700/50 text-slate-400"
+        styles[channel] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
       {formatLabel(channel)}
@@ -1081,19 +1081,19 @@ function SentimentBadge({
 }: {
   sentiment: "positive" | "neutral" | "negative" | null;
 }) {
-  if (!sentiment) {return <span className="text-slate-700">--</span>;}
+  if (!sentiment) {return <span className="text-neutral-700">--</span>;}
 
   const map: Record<string, { style: string; label: string }> = {
     positive: {
-      style: "bg-emerald-500/15 text-emerald-400",
+      style: "bg-neutral-300/15 text-white",
       label: "Positive",
     },
     neutral: {
-      style: "bg-slate-700/50 text-slate-400",
+      style: "bg-neutral-700/50 text-neutral-400",
       label: "Neutral",
     },
     negative: {
-      style: "bg-rose-500/15 text-rose-400",
+      style: "bg-neutral-500/15 text-neutral-500",
       label: "Negative",
     },
   };

@@ -32,7 +32,7 @@ export function FormQAAccordion({ data }: FormQAAccordionProps) {
 
   if (data.length === 0) {
     return (
-      <p className="px-3 py-4 text-sm text-slate-500">
+      <p className="px-3 py-4 text-sm text-neutral-500">
         No form Q&A data for this date.
       </p>
     );
@@ -44,15 +44,15 @@ export function FormQAAccordion({ data }: FormQAAccordionProps) {
         <button
           type="button"
           onClick={expandAll}
-          className="text-xs text-slate-500 transition-colors hover:text-slate-300"
+          className="text-xs text-neutral-500 transition-colors hover:text-neutral-300"
         >
           Expand all
         </button>
-        <span className="text-slate-700">|</span>
+        <span className="text-neutral-700">|</span>
         <button
           type="button"
           onClick={collapseAll}
-          className="text-xs text-slate-500 transition-colors hover:text-slate-300"
+          className="text-xs text-neutral-500 transition-colors hover:text-neutral-300"
         >
           Collapse all
         </button>
@@ -66,35 +66,35 @@ export function FormQAAccordion({ data }: FormQAAccordionProps) {
         return (
           <div
             key={entry.company}
-            className="rounded-lg border border-slate-700/30 bg-slate-900/50"
+            className="rounded-lg border border-neutral-700/30 bg-neutral-900/50"
           >
             <button
               type="button"
               onClick={() => toggleCompany(entry.company)}
-              className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-slate-800/40"
+              className="flex w-full items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-neutral-800/40"
             >
               <div className="flex items-center gap-2">
                 <ChevronIcon
-                  className={`h-4 w-4 text-slate-500 transition-transform ${
+                  className={`h-4 w-4 text-neutral-500 transition-transform ${
                     isOpen ? "rotate-90" : ""
                   }`}
                 />
-                <span className="text-sm font-medium text-slate-200">
+                <span className="text-sm font-medium text-neutral-200">
                   {entry.company}
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-neutral-500">
                   {entry.questions.length} question
                   {entry.questions.length !== 1 ? "s" : ""}
                 </span>
               </div>
               {flaggedCount > 0 && (
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-400">
+                <span className="rounded-full bg-neutral-400/15 px-2 py-0.5 text-xs font-medium text-neutral-400">
                   {flaggedCount} flagged
                 </span>
               )}
             </button>
             {isOpen && (
-              <div className="border-t border-slate-700/30 px-3 py-2">
+              <div className="border-t border-neutral-700/30 px-3 py-2">
                 <div className="space-y-3">
                   {entry.questions.map((qa, idx) => {
                     const flagged = isFlaggedAnswer(qa.question, qa.answer);
@@ -103,21 +103,21 @@ export function FormQAAccordion({ data }: FormQAAccordionProps) {
                         key={`${entry.company}-${idx}`}
                         className={`rounded-lg p-2.5 ${
                           flagged
-                            ? "border border-amber-500/30 bg-amber-500/5"
-                            : "bg-slate-800/30"
+                            ? "border border-neutral-400/30 bg-neutral-400/5"
+                            : "bg-neutral-800/30"
                         }`}
                       >
-                        <p className="text-xs font-medium text-slate-400">
+                        <p className="text-xs font-medium text-neutral-400">
                           Q: {qa.question}
                         </p>
                         <p
                           className={`mt-1 text-sm ${
-                            flagged ? "text-amber-300" : "text-slate-200"
+                            flagged ? "text-neutral-300" : "text-neutral-200"
                           }`}
                         >
                           A: {qa.answer || "(empty)"}
                           {flagged && (
-                            <span className="ml-2 text-xs text-amber-500">
+                            <span className="ml-2 text-xs text-neutral-400">
                               {getFlagReason(qa.question, qa.answer)}
                             </span>
                           )}

@@ -1,29 +1,20 @@
-const STATUS_COLORS: Record<string, string> = {
-  // Application statuses
-  interested: "bg-slate-600/30 text-slate-300",
-  applied: "bg-blue-500/20 text-blue-400",
-  phone_screen: "bg-cyan-500/20 text-cyan-400",
-  interview: "bg-amber-500/20 text-amber-400",
-  final: "bg-purple-500/20 text-purple-400",
-  offer: "bg-emerald-500/20 text-emerald-400",
-  hired: "bg-emerald-600/30 text-emerald-300",
-  rejected: "bg-rose-500/20 text-rose-400",
-  withdrawn: "bg-slate-500/20 text-slate-400",
-  // Proposal statuses
-  draft: "bg-slate-600/30 text-slate-300",
-  submitted: "bg-blue-500/20 text-blue-400",
-  viewed: "bg-cyan-500/20 text-cyan-400",
-  shortlisted: "bg-amber-500/20 text-amber-400",
-  // Client statuses
-  lead: "bg-slate-600/30 text-slate-300",
-  active: "bg-emerald-500/20 text-emerald-400",
-  paused: "bg-amber-500/20 text-amber-400",
-  completed: "bg-blue-500/20 text-blue-400",
-  churned: "bg-rose-500/20 text-rose-400",
-  // Generic
-  scheduled: "bg-blue-500/20 text-blue-400",
-  cancelled: "bg-rose-500/20 text-rose-400",
-  rescheduled: "bg-amber-500/20 text-amber-400",
+const STATUS_STYLES: Record<string, string> = {
+  interested: "bg-white/[0.06] text-neutral-400",
+  applied: "bg-white/[0.08] text-neutral-300",
+  phone_screen: "bg-white/[0.10] text-neutral-200",
+  interview: "bg-white/[0.12] text-neutral-100",
+  final: "bg-white/[0.14] text-white",
+  offer: "bg-white/[0.16] text-white font-semibold",
+  hired: "bg-white/[0.18] text-white font-semibold",
+  rejected: "bg-white/[0.04] text-neutral-500 line-through",
+  withdrawn: "bg-white/[0.04] text-neutral-500",
+  draft: "bg-white/[0.04] text-neutral-500",
+  submitted: "bg-white/[0.08] text-neutral-300",
+  viewed: "bg-white/[0.10] text-neutral-200",
+  shortlisted: "bg-white/[0.12] text-neutral-100",
+  active: "bg-white/[0.10] text-neutral-200",
+  scheduled: "bg-white/[0.08] text-neutral-300",
+  cancelled: "bg-white/[0.04] text-neutral-500 line-through",
 };
 
 interface StatusBadgeProps {
@@ -31,13 +22,11 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const color = STATUS_COLORS[status] ?? "bg-slate-600/30 text-slate-300";
+  const style = STATUS_STYLES[status] ?? "bg-white/[0.06] text-neutral-400";
   const label = status.replace(/_/g, " ");
 
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${color}`}
-    >
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-[11px] font-medium capitalize ${style}`}>
       {label}
     </span>
   );

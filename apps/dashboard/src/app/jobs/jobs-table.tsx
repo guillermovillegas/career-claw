@@ -122,7 +122,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
         type="button"
         onClick={() => handleSort(column)}
         className={`flex items-center gap-1 text-xs font-semibold uppercase tracking-wider ${
-          isActive ? "text-emerald-400" : "text-slate-400 hover:text-slate-300"
+          isActive ? "text-white" : "text-neutral-400 hover:text-neutral-300"
         }`}
       >
         {label}
@@ -179,8 +179,8 @@ export function JobsTable({ jobs }: JobsTableProps) {
           onClick={() => setHideClosed((v) => !v)}
           className={`text-xs px-2 py-1 rounded border transition-colors ${
             hideClosed
-              ? "border-slate-700 bg-slate-800/80 text-slate-400 hover:text-slate-200"
-              : "border-rose-700/50 bg-rose-900/20 text-rose-400"
+              ? "border-neutral-700 bg-neutral-800/80 text-neutral-400 hover:text-neutral-200"
+              : "border-neutral-600/50 bg-neutral-700/20 text-neutral-500"
           }`}
         >
           {hideClosed ? "Hide closed" : "Show closed"}
@@ -194,13 +194,13 @@ export function JobsTable({ jobs }: JobsTableProps) {
               setFilterWorkMode("");
               setFilterApplied("");
             }}
-            className="text-xs text-slate-400 hover:text-slate-200"
+            className="text-xs text-neutral-400 hover:text-neutral-200"
           >
             Clear
           </button>
         )}
-        <span className="ml-auto text-xs text-slate-500">
-          {sortedJobs.length} shown · <span className="text-sky-500">{newCount} new</span> · {appliedCount} applied
+        <span className="ml-auto text-xs text-neutral-500">
+          {sortedJobs.length} shown · <span className="text-neutral-300">{newCount} new</span> · {appliedCount} applied
         </span>
       </div>
 
@@ -210,9 +210,9 @@ export function JobsTable({ jobs }: JobsTableProps) {
           description="Try adjusting your filters or check back later"
         />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-700/50">
+        <div className="overflow-x-auto rounded-lg border border-neutral-700/50">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-700/50 bg-slate-800/80">
+            <thead className="border-b border-neutral-700/50 bg-neutral-800/80">
               <tr>
                 <th className="px-3 py-2">
                   <SortHeader label="Score" column="match_score" />
@@ -238,7 +238,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
                 <th className="px-3 py-2 w-6" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-neutral-800">
               {sortedJobs.map((job) => (
                 <JobRow key={job.id} job={job} />
               ))}
@@ -254,22 +254,22 @@ export function JobsTable({ jobs }: JobsTableProps) {
 
 function JobRow({ job }: { job: JobWithAppStatus }) {
   return (
-    <tr className="transition-colors hover:bg-slate-800/40">
+    <tr className="transition-colors hover:bg-white/[0.04]">
       <td className="px-3 py-2">
         <ScoreBadge score={job.match_score} />
       </td>
       <td className="px-3 py-2 max-w-xs">
         <Link
           href={`/jobs/${job.id}`}
-          className="font-medium text-slate-200 truncate hover:text-emerald-400 transition-colors block"
+          className="font-medium text-neutral-200 truncate hover:text-white transition-colors block"
         >
           {job.title}
         </Link>
-        <p className="text-slate-500 truncate">{job.company}</p>
+        <p className="text-neutral-500 truncate">{job.company}</p>
       </td>
       <td className="px-3 py-2">
         {job.is_closed ? (
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-700/50 text-slate-500 line-through">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/50 text-neutral-500 line-through">
             Closed
           </span>
         ) : (
@@ -279,11 +279,11 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
       <td className="px-3 py-2">
         <WorkModeBadge mode={job.work_mode} />
       </td>
-      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-400">
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-400">
         {formatSalaryRange(job.salary_min, job.salary_max)}
       </td>
-      <td className="px-3 py-2 text-slate-500 capitalize">{job.platform}</td>
-      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-500">
+      <td className="px-3 py-2 text-neutral-500 capitalize">{job.platform}</td>
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-500">
         {formatDate(job.created_at)}
       </td>
       <td className="px-3 py-2">
@@ -292,7 +292,7 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-slate-600 hover:text-emerald-400 transition-colors"
+            className="text-neutral-600 hover:text-white transition-colors"
             title="Open job posting"
           >
             <ExternalLinkIcon className="h-3.5 w-3.5" />
@@ -310,27 +310,27 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
 function AppStatusBadge({ status }: { status: string | null }) {
   if (!status) {
     return (
-      <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-500/20">
+      <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-white/[0.08] text-neutral-300 ring-1 ring-inset ring-neutral-500/20">
         New
       </span>
     );
   }
   const styles: Record<string, string> = {
-    interested: "bg-slate-700/60 text-slate-400",
-    applied: "bg-blue-500/15 text-blue-400",
-    phone_screen: "bg-violet-500/15 text-violet-400",
-    interview: "bg-amber-500/15 text-amber-400",
-    final: "bg-orange-500/15 text-orange-400",
-    offer: "bg-emerald-500/15 text-emerald-400",
-    hired: "bg-emerald-600/25 text-emerald-300",
-    rejected: "bg-rose-500/15 text-rose-400",
-    withdrawn: "bg-slate-700/50 text-slate-500",
+    interested: "bg-neutral-700/60 text-neutral-400",
+    applied: "bg-white/[0.08] text-neutral-300",
+    phone_screen: "bg-white/[0.08] text-neutral-300",
+    interview: "bg-white/[0.08] text-neutral-300",
+    final: "bg-white/[0.08] text-neutral-200",
+    offer: "bg-white/[0.08] text-white",
+    hired: "bg-white/[0.08] text-white",
+    rejected: "bg-neutral-700/50 text-neutral-500",
+    withdrawn: "bg-neutral-700/50 text-neutral-500",
   };
   const label = status.replace(/_/g, " ");
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-        styles[status] ?? "bg-slate-700/50 text-slate-400"
+        styles[status] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
       {label}
@@ -339,16 +339,16 @@ function AppStatusBadge({ status }: { status: string | null }) {
 }
 
 function WorkModeBadge({ mode }: { mode: string | null }) {
-  if (!mode) {return <span className="text-slate-600">—</span>;}
+  if (!mode) {return <span className="text-neutral-600">—</span>;}
   const styles: Record<string, string> = {
-    remote: "bg-emerald-500/15 text-emerald-400",
-    hybrid: "bg-amber-500/15 text-amber-400",
-    "on-site": "bg-rose-500/15 text-rose-400",
+    remote: "bg-white/[0.08] text-neutral-300",
+    hybrid: "bg-neutral-700/50 text-neutral-400",
+    "on-site": "bg-neutral-700/50 text-neutral-500",
   };
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-        styles[mode] ?? "bg-slate-700/50 text-slate-400"
+        styles[mode] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
       {mode}
@@ -371,7 +371,7 @@ function FilterSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="rounded border border-slate-700 bg-slate-800/80 px-2 py-1 text-xs text-slate-300 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="rounded border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-xs text-neutral-300 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
     >
       <option value="">All {label}s</option>
       {options.map((opt) => (

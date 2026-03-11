@@ -55,7 +55,7 @@ export function DateNav({ currentDate }: DateNavProps) {
       <button
         type="button"
         onClick={() => shiftDate(-1)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-900 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-700/50 bg-neutral-900 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200"
         title="Previous day"
       >
         <ChevronLeftIcon className="h-4 w-4" />
@@ -69,16 +69,16 @@ export function DateNav({ currentDate }: DateNavProps) {
           onChange={(e) => {
             if (e.target.value) {navigateToDate(e.target.value);}
           }}
-          className="rounded-lg border border-slate-700/50 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-emerald-500/50 [&::-webkit-calendar-picker-indicator]:invert"
+          className="rounded-lg border border-neutral-700/50 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-400/50 [&::-webkit-calendar-picker-indicator]:invert"
         />
-        <span className="text-sm text-slate-400">{displayDate}</span>
+        <span className="text-sm text-neutral-400">{displayDate}</span>
       </div>
 
       <button
         type="button"
         onClick={() => shiftDate(1)}
         disabled={isToday}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700/50 bg-slate-900 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-700/50 bg-neutral-900 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-200 disabled:cursor-not-allowed disabled:opacity-30"
         title="Next day"
       >
         <ChevronRightIcon className="h-4 w-4" />
@@ -88,7 +88,7 @@ export function DateNav({ currentDate }: DateNavProps) {
         <button
           type="button"
           onClick={goToToday}
-          className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-500/20"
+          className="rounded-lg border border-neutral-300/30 bg-neutral-300/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neutral-300/20"
         >
           Today
         </button>

@@ -16,7 +16,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="antialiased">
         <Sidebar />
-        <main className="ml-48 min-h-screen p-6">{children}</main>
+        <main className="ml-[52px] min-h-screen px-5 py-4">{children}</main>
       </body>
     </html>
   );

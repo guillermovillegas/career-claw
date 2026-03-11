@@ -5,25 +5,14 @@ interface ScoreBadgeProps {
 export function ScoreBadge({ score }: ScoreBadgeProps) {
   if (score == null) {
     return (
-      <span className="inline-flex items-center rounded-full bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-slate-400">
-        --
-      </span>
+      <span className="text-[11px] tabular-nums text-neutral-600">--</span>
     );
   }
 
-  let colorClass: string;
-  if (score >= 80) {
-    colorClass = "bg-emerald-500/20 text-emerald-400";
-  } else if (score >= 60) {
-    colorClass = "bg-amber-500/20 text-amber-400";
-  } else {
-    colorClass = "bg-rose-500/20 text-rose-400";
-  }
+  const opacity = score >= 85 ? "text-white" : score >= 70 ? "text-neutral-300" : "text-neutral-500";
 
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${colorClass}`}
-    >
+    <span className={`text-[11px] font-semibold tabular-nums ${opacity}`}>
       {score}
     </span>
   );

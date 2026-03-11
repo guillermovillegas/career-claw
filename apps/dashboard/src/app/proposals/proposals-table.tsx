@@ -19,9 +19,9 @@ const PLATFORM_ICONS: Record<string, string> = {
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  upwork: "bg-green-500/20 text-green-400",
-  fiverr: "bg-emerald-500/20 text-emerald-400",
-  direct: "bg-blue-500/20 text-blue-400",
+  upwork: "bg-white/[0.10] text-neutral-300",
+  fiverr: "bg-white/[0.10] text-neutral-300",
+  direct: "bg-white/[0.10] text-neutral-300",
 };
 
 export function ProposalsTable({ proposals }: ProposalsTableProps) {
@@ -36,14 +36,14 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex items-center gap-3">
-        <div className="flex rounded-lg border border-slate-700 bg-slate-800">
+        <div className="flex rounded-lg border border-neutral-700 bg-neutral-800">
           <button
             type="button"
             onClick={() => setFilterPlatform("")}
             className={`px-3 py-1.5 text-sm transition-colors ${
               filterPlatform === ""
-                ? "bg-emerald-500/10 text-emerald-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white/[0.10] text-white"
+                : "text-neutral-400 hover:text-neutral-200"
             }`}
           >
             All
@@ -53,17 +53,17 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
               key={p}
               type="button"
               onClick={() => setFilterPlatform(p)}
-              className={`border-l border-slate-700 px-3 py-1.5 text-sm capitalize transition-colors ${
+              className={`border-l border-neutral-700 px-3 py-1.5 text-sm capitalize transition-colors ${
                 filterPlatform === p
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-white/[0.10] text-white"
+                  : "text-neutral-400 hover:text-neutral-200"
               }`}
             >
               {p}
             </button>
           ))}
         </div>
-        <span className="ml-auto text-xs text-slate-500">
+        <span className="ml-auto text-xs text-neutral-500">
           {filtered.length} result{filtered.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -74,34 +74,34 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
           description="Freelance proposals will appear here once submitted"
         />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-700/50">
+        <div className="overflow-x-auto rounded-xl border border-neutral-700/50">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-700/50 bg-slate-800/80">
+            <thead className="border-b border-neutral-700/50 bg-neutral-800/80">
               <tr>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Platform
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Project
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Client
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Bid
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Budget
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Status
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                   Submitted
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-700/30">
+            <tbody className="divide-y divide-neutral-700/30">
               {filtered.map((proposal) => (
                 <ProposalRow key={proposal.id} proposal={proposal} />
               ))}
@@ -115,7 +115,7 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
 
 function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
   const platformColor =
-    PLATFORM_COLORS[proposal.platform] ?? "bg-slate-600/30 text-slate-300";
+    PLATFORM_COLORS[proposal.platform] ?? "bg-neutral-600/30 text-neutral-300";
   const platformIcon =
     PLATFORM_ICONS[proposal.platform] ?? proposal.platform[0].toUpperCase();
 
@@ -130,7 +130,7 @@ function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
       : "--";
 
   return (
-    <tr className="transition-colors hover:bg-slate-800/50">
+    <tr className="transition-colors hover:bg-neutral-800/50">
       <td className="px-4 py-3">
         <span
           className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold ${platformColor}`}
@@ -140,41 +140,41 @@ function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
       </td>
       <td className="px-4 py-3">
         <div>
-          <p className="font-medium text-slate-200">{proposal.project_title}</p>
+          <p className="font-medium text-neutral-200">{proposal.project_title}</p>
           {proposal.project_url && (
             <a
               href={proposal.project_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-blue-400 hover:underline"
+              className="text-xs text-neutral-400 hover:underline"
             >
               View project
             </a>
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-slate-300">
+      <td className="px-4 py-3 text-neutral-300">
         {proposal.client_name ?? "--"}
         {proposal.client_country && (
-          <span className="ml-1 text-xs text-slate-500">
+          <span className="ml-1 text-xs text-neutral-500">
             ({proposal.client_country})
           </span>
         )}
       </td>
-      <td className="px-4 py-3 font-medium text-emerald-400">
+      <td className="px-4 py-3 font-medium text-neutral-300">
         {proposal.bid_amount != null
           ? formatCurrency(Number(proposal.bid_amount))
           : "--"}
         {proposal.budget_type && (
-          <span className="ml-1 text-xs text-slate-500">
+          <span className="ml-1 text-xs text-neutral-500">
             {proposal.budget_type === "hourly" ? "/hr" : "fixed"}
           </span>
         )}
       </td>
-      <td className="px-4 py-3 text-slate-400">
+      <td className="px-4 py-3 text-neutral-400">
         {budgetRange}
         {proposal.budget_type && (
-          <span className="ml-1 text-xs text-slate-500">
+          <span className="ml-1 text-xs text-neutral-500">
             {proposal.budget_type}
           </span>
         )}
@@ -182,7 +182,7 @@ function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
       <td className="px-4 py-3">
         <StatusBadge status={proposal.status} />
       </td>
-      <td className="px-4 py-3 text-slate-400">
+      <td className="px-4 py-3 text-neutral-400">
         {formatDate(proposal.submitted_at)}
       </td>
     </tr>

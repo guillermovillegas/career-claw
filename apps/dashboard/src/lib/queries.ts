@@ -280,11 +280,88 @@ export async function getJobAutomationContext(
 export async function getApplications(): Promise<ApplicationWithJob[]> {
   const { data, error } = await supabase
     .from("applications")
-    .select("*, jobs(title, company, location, salary_min, salary_max, work_mode)")
+    .select("*, jobs(title, company, location, salary_min, salary_max, work_mode, url, platform)")
     .order("created_at", { ascending: false });
 
   if (error) {throw error;}
   return (data as unknown as ApplicationWithJob[]) ?? [];
+}
+
+// ─── Analytics ──────────────────────────────────────────────────────
+
+export interface PlatformStat {
+  platform: string;
+  total: number;
+  applied: number;
+  interested: number;
+  interviewing: number;
+  rejected: number;
+}
+
+export async function getPlatformAnalytics(): Promise<PlatformStat[]> {
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("platform, applications(status)")
+    .not("platform", "in", '("upwork","fiverr")');
+
+  if (error) {throw error;}
+
+  const map = new Map<string, PlatformStat>();
+  for (const job of (data ?? []) as { platform: string; applications: { status: string }[] | null }[]) {
+    const p = job.platform ?? "other";
+    if (!map.has(p)) {
+      map.set(p, { platform: p, total: 0, applied: 0, interested: 0, interviewing: 0, rejected: 0 });
+    }
+    const stat = map.get(p)!;
+    stat.total++;
+    for (const app of job.applications ?? []) {
+      if (app.status === "applied") {stat.applied++;}
+      else if (app.status === "interested") {stat.interested++;}
+      else if (["phone_screen", "interview", "final", "offer"].includes(app.status)) {stat.interviewing++;}
+      else if (app.status === "rejected") {stat.rejected++;}
+    }
+  }
+
+  return [...map.values()].toSorted((a, b) => b.total - a.total);
+}
+
+export interface CoverLetterStats {
+  total: number;
+  withCoverLetter: number;
+  avgWordCount: number;
+  readyToSubmit: number;
+}
+
+export async function getCoverLetterStats(): Promise<CoverLetterStats> {
+  const { data, error } = await supabase
+    .from("applications")
+    .select("cover_letter, status, jobs(url)")
+    .not("status", "in", '("rejected","withdrawn")');
+
+  if (error) {throw error;}
+
+  let total = 0;
+  let withCoverLetter = 0;
+  let totalWords = 0;
+  let readyToSubmit = 0;
+
+  for (const app of (data ?? []) as { cover_letter: string | null; status: string; jobs: { url: string | null } | null }[]) {
+    total++;
+    if (app.cover_letter && app.cover_letter.length > 50) {
+      withCoverLetter++;
+      totalWords += app.cover_letter.split(/\s+/).length;
+      if (app.status === "interested" && app.jobs?.url) {
+        readyToSubmit++;
+      }
+    }
+  }
+
+  return {
+    total,
+    withCoverLetter,
+    avgWordCount: withCoverLetter > 0 ? Math.round(totalWords / withCoverLetter) : 0,
+    readyToSubmit,
+  };
 }
 
 // ─── Freelance Job Leads (upwork/fiverr from jobs table) ─────────────
@@ -463,7 +540,7 @@ export async function getApplicationFormQA(
 type ApplicationWithJobUrl = Application & {
   jobs: Pick<
     Job,
-    "title" | "company" | "location" | "salary_min" | "salary_max" | "work_mode" | "url"
+    "title" | "company" | "location" | "salary_min" | "salary_max" | "work_mode" | "url" | "platform"
   > | null;
 };
 
@@ -477,7 +554,7 @@ export async function getActiveResponses(): Promise<ResponseWithComms[]> {
   // Fetch apps in non-terminal, post-interested stages
   const { data: rawApps, error } = await supabase
     .from("applications")
-    .select("*, jobs(title, company, location, salary_min, salary_max, work_mode, url)")
+    .select("*, jobs(title, company, location, salary_min, salary_max, work_mode, url, platform)")
     .in("status", ["applied", "phone_screen", "interview", "final", "offer", "hired"])
     .order("updated_at", { ascending: false });
 

@@ -35,8 +35,8 @@ export function CopyButton({ text }: CopyButtonProps) {
       onClick={handleCopy}
       className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
         copied
-          ? "bg-emerald-500/15 text-emerald-400"
-          : "bg-slate-700/60 text-slate-400 hover:bg-slate-700 hover:text-slate-300"
+          ? "bg-white/[0.10] text-white"
+          : "bg-white/[0.06] text-neutral-500 hover:bg-white/[0.10] hover:text-neutral-300"
       }`}
       title={copied ? "Copied!" : "Copy cover letter to clipboard"}
     >

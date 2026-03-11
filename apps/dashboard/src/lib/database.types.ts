@@ -703,7 +703,7 @@ export type CommunicationLog =
 export type ApplicationWithJob = Application & {
   jobs: Pick<
     Job,
-    "title" | "company" | "location" | "salary_min" | "salary_max" | "work_mode"
+    "title" | "company" | "location" | "salary_min" | "salary_max" | "work_mode" | "url" | "platform"
   > | null;
 };
 

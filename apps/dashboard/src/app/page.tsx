@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ScoreBadge } from "@/components/score-badge";
 import { Pipeline } from "@/components/pipeline";
 import {
@@ -6,24 +7,23 @@ import {
   getRecentActivity,
   getOverdueFollowups,
   getPipelineData,
+  getPlatformAnalytics,
+  getCoverLetterStats,
 } from "@/lib/queries";
-import {
-  formatRelativeTime,
-  formatSalaryRange,
-  formatLabel,
-  formatDate,
-} from "@/lib/format";
+import { formatRelativeTime, formatLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [metrics, topMatches, recentActivity, overdueFollowups, pipelineData] =
+  const [metrics, topMatches, recentActivity, overdueFollowups, pipelineData, platformStats, clStats] =
     await Promise.all([
       getDashboardMetrics(),
-      getTopMatches(15),
-      getRecentActivity(15),
+      getTopMatches(12),
+      getRecentActivity(10),
       getOverdueFollowups(),
       getPipelineData(),
+      getPlatformAnalytics(),
+      getCoverLetterStats(),
     ]);
 
   const activeApps =
@@ -32,83 +32,79 @@ export default async function DashboardPage() {
     (metrics.applicationsByStatus["interview"] ?? 0) +
     (metrics.applicationsByStatus["final"] ?? 0);
 
+  const appliedRate = metrics.totalApplications > 0
+    ? Math.round(((metrics.applicationsByStatus["applied"] ?? 0) / metrics.totalApplications) * 100)
+    : 0;
+
   return (
-    <div className="space-y-4">
-      {/* Stat chips strip */}
-      <div className="flex flex-wrap gap-2">
-        <StatChip label="Jobs tracked" value={metrics.totalJobs} />
-        <StatChip label="Applications" value={metrics.totalApplications} />
-        <StatChip label="Active" value={activeApps} accent="emerald" />
-        <StatChip label="Proposals" value={metrics.totalProposals} accent="amber" />
-        <StatChip label="Clients" value={metrics.activeClients} accent="rose" />
+    <div className="space-y-4 max-w-[1400px]">
+      {/* Metric strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <MetricCard label="Jobs" value={metrics.totalJobs} />
+        <MetricCard label="Applications" value={metrics.totalApplications} />
+        <MetricCard label="Applied" value={metrics.applicationsByStatus["applied"] ?? 0} sub={`${appliedRate}%`} />
+        <MetricCard label="Active" value={activeApps} />
+        <MetricCard label="Ready" value={clStats.readyToSubmit} sub="to submit" />
+        <MetricCard label="Avg Words" value={clStats.avgWordCount} sub="cover letter" />
       </div>
 
-      {/* Status breakdown + Pipeline */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-slate-700/50 bg-slate-900 p-4">
-          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-            Status Breakdown
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(metrics.applicationsByStatus)
-              .toSorted(([, a], [, b]) => b - a)
-              .map(([status, count]) => (
-                <div key={status} className="flex items-center justify-between rounded-md bg-slate-800/50 px-3 py-1.5">
-                  <span className="text-xs text-slate-400 capitalize">{status.replace(/_/g, " ")}</span>
-                  <span className="text-sm font-bold tabular-nums text-slate-200">{count}</span>
-                </div>
-              ))}
-          </div>
-        </div>
+      {/* Pipeline + Platform analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <Pipeline data={pipelineData} />
+        <PlatformBreakdown stats={platformStats} />
       </div>
 
-      {/* Main two-column grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        {/* Left 3/5: Top job matches */}
-        <div className="lg:col-span-3 rounded-lg border border-slate-700/50 bg-slate-900">
-          <div className="border-b border-slate-700/50 px-3 py-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+      {/* Status breakdown compact */}
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(metrics.applicationsByStatus)
+          .toSorted(([, a], [, b]) => b - a)
+          .map(([status, count]) => (
+            <div key={status} className="flex items-center gap-2 rounded-md bg-neutral-900 border border-neutral-800 px-3 py-1.5">
+              <span className="text-[11px] text-neutral-500 capitalize">{status.replace(/_/g, " ")}</span>
+              <span className="text-[12px] font-semibold tabular-nums text-neutral-300">{count}</span>
+            </div>
+          ))}
+      </div>
+
+      {/* Main grid: Top matches + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+        {/* Top matches - 3/5 */}
+        <div className="lg:col-span-3 rounded-lg border border-neutral-800 bg-neutral-950">
+          <div className="border-b border-neutral-800 px-3 py-2 flex items-center justify-between">
+            <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-widest">
               Top Matches
             </span>
+            <Link href="/applications" className="text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors">
+              View all
+            </Link>
           </div>
           {topMatches.length === 0 ? (
-            <p className="px-3 py-4 text-sm text-slate-500">No scored matches yet.</p>
+            <p className="px-3 py-6 text-[13px] text-neutral-600 text-center">No scored matches yet.</p>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-neutral-800/50">
               {topMatches.map((job) => (
                 <div
                   key={job.id}
-                  className="flex items-center gap-3 px-3 py-2 hover:bg-slate-800/40 transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.02] transition-colors"
                 >
                   <ScoreBadge score={job.match_score} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="truncate text-sm font-medium text-slate-200">
-                        {job.title}
-                      </span>
-                      {job.work_mode && (
-                        <WorkModePill mode={job.work_mode} />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-slate-400 truncate">{job.company}</span>
-                      {(job.salary_min != null || job.salary_max != null) && (
-                        <span className="text-xs text-slate-500 shrink-0">
-                          {formatSalaryRange(job.salary_min, job.salary_max)}
-                        </span>
-                      )}
-                    </div>
+                    <span className="block text-[13px] font-medium text-neutral-200 truncate">
+                      {job.title}
+                    </span>
+                    <span className="text-[11px] text-neutral-600">{job.company}</span>
                   </div>
+                  {job.work_mode && (
+                    <span className="text-[10px] text-neutral-600">{job.work_mode}</span>
+                  )}
                   {job.url && (
                     <a
                       href={job.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 text-slate-600 hover:text-emerald-400 transition-colors"
-                      title="Open job posting"
+                      className="shrink-0 px-2 py-0.5 rounded border border-neutral-800 text-[10px] text-neutral-500 hover:text-white hover:border-neutral-600 transition-all"
                     >
-                      <ExternalLinkIcon className="h-3.5 w-3.5" />
+                      Apply
                     </a>
                   )}
                 </div>
@@ -117,34 +113,27 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Right 2/5: Activity feed */}
-        <div className="lg:col-span-2 rounded-lg border border-slate-700/50 bg-slate-900">
-          <div className="border-b border-slate-700/50 px-3 py-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        {/* Activity - 2/5 */}
+        <div className="lg:col-span-2 rounded-lg border border-neutral-800 bg-neutral-950">
+          <div className="border-b border-neutral-800 px-3 py-2">
+            <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-widest">
               Activity
             </span>
           </div>
           {recentActivity.length === 0 ? (
-            <p className="px-3 py-4 text-sm text-slate-500">No automation runs yet.</p>
+            <p className="px-3 py-6 text-[13px] text-neutral-600 text-center">No automation runs yet.</p>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-neutral-800/30">
               {recentActivity.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-center gap-2 px-3 py-2"
-                >
-                  <span
-                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                      log.success ? "bg-emerald-400" : "bg-rose-400"
-                    }`}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-xs text-slate-300">
+                <div key={log.id} className="flex items-center gap-2 px-3 py-2">
+                  <span className={`h-1 w-1 shrink-0 rounded-full ${log.success ? "bg-neutral-400" : "bg-neutral-600"}`} />
+                  <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-400">
                     {formatLabel(log.action_type)}
                     {log.platform ? (
-                      <span className="text-slate-500"> · {log.platform}</span>
+                      <span className="text-neutral-600"> / {log.platform}</span>
                     ) : null}
                   </span>
-                  <span className="shrink-0 text-[10px] tabular-nums text-slate-600">
+                  <span className="shrink-0 text-[10px] tabular-nums text-neutral-700">
                     {formatRelativeTime(log.created_at)}
                   </span>
                 </div>
@@ -154,24 +143,21 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Overdue follow-ups strip (only shown if any) */}
+      {/* Overdue follow-ups */}
       {overdueFollowups.length > 0 && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5">
-          <div className="border-b border-amber-500/20 px-3 py-2">
-            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
+        <div className="rounded-lg border border-neutral-700 bg-neutral-900">
+          <div className="border-b border-neutral-700/50 px-3 py-2">
+            <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-widest">
               Overdue Follow-ups ({overdueFollowups.length})
             </span>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-1 px-3 py-2">
+          <div className="flex flex-wrap gap-x-5 gap-y-1 px-3 py-2">
             {overdueFollowups.map((app) => (
               <div key={app.id} className="flex items-baseline gap-2">
-                <span className="text-xs font-medium text-slate-300">
+                <span className="text-[12px] font-medium text-neutral-300">
                   {app.jobs?.title ?? "Unknown"}
                 </span>
-                <span className="text-xs text-slate-500">{app.jobs?.company}</span>
-                <span className="text-[10px] text-amber-500">
-                  due {formatDate(app.next_followup_date)}
-                </span>
+                <span className="text-[11px] text-neutral-600">{app.jobs?.company}</span>
               </div>
             ))}
           </div>
@@ -181,65 +167,67 @@ export default async function DashboardPage() {
   );
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────
+// ─── Metric Card ─────────────────────────────────────────────────────
 
-function StatChip({
+function MetricCard({
   label,
   value,
-  accent,
+  sub,
 }: {
   label: string;
   value: number;
-  accent?: "emerald" | "amber" | "rose";
+  sub?: string;
 }) {
-  const valueColor =
-    accent === "emerald"
-      ? "text-emerald-400"
-      : accent === "amber"
-        ? "text-amber-400"
-        : accent === "rose"
-          ? "text-rose-400"
-          : "text-slate-200";
-
   return (
-    <div className="flex items-baseline gap-1.5 rounded-md border border-slate-700/60 bg-slate-900 px-3 py-1.5">
-      <span className={`text-base font-bold tabular-nums ${valueColor}`}>{value}</span>
-      <span className="text-xs text-slate-500">{label}</span>
+    <div className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2.5">
+      <p className="text-[10px] text-neutral-600 uppercase tracking-widest">{label}</p>
+      <div className="flex items-baseline gap-1.5 mt-0.5">
+        <span className="text-xl font-semibold tabular-nums text-white">{value}</span>
+        {sub && <span className="text-[10px] text-neutral-600">{sub}</span>}
+      </div>
     </div>
   );
 }
 
-function WorkModePill({ mode }: { mode: string }) {
-  const styles: Record<string, string> = {
-    remote: "bg-emerald-500/15 text-emerald-400",
-    hybrid: "bg-amber-500/15 text-amber-400",
-    "on-site": "bg-rose-500/15 text-rose-400",
-  };
-  return (
-    <span
-      className={`shrink-0 rounded px-1 py-px text-[10px] font-medium capitalize ${
-        styles[mode] ?? "bg-slate-700/50 text-slate-400"
-      }`}
-    >
-      {mode}
-    </span>
-  );
-}
+// ─── Platform Breakdown ──────────────────────────────────────────────
 
-function ExternalLinkIcon({ className }: { className?: string }) {
+function PlatformBreakdown({
+  stats,
+}: {
+  stats: { platform: string; total: number; applied: number; interested: number; interviewing: number; rejected: number }[];
+}) {
+  const maxTotal = Math.max(...stats.map((s) => s.total), 1);
+
   return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-      />
-    </svg>
+    <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
+      <h2 className="text-[11px] font-medium text-neutral-500 uppercase tracking-widest mb-3">
+        By Platform
+      </h2>
+      <div className="space-y-2">
+        {stats.slice(0, 6).map((s) => {
+          const appliedPct = s.total > 0 ? Math.round((s.applied / s.total) * 100) : 0;
+          return (
+            <div key={s.platform} className="flex items-center gap-3">
+              <span className="w-20 text-[11px] text-neutral-400 capitalize truncate">{s.platform}</span>
+              <div className="flex-1 h-3 bg-neutral-900 rounded-sm overflow-hidden flex">
+                <div
+                  className="h-full bg-white/[0.20] transition-all"
+                  style={{ width: `${(s.applied / maxTotal) * 100}%` }}
+                />
+                <div
+                  className="h-full bg-white/[0.06] transition-all"
+                  style={{ width: `${((s.total - s.applied) / maxTotal) * 100}%` }}
+                />
+              </div>
+              <span className="w-8 text-right text-[11px] tabular-nums text-neutral-500">{s.total}</span>
+              <span className="w-10 text-right text-[10px] tabular-nums text-neutral-600">{appliedPct}%</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-neutral-700 mt-2">
+        Bar: applied (bright) vs total. % = applied rate.
+      </p>
+    </div>
   );
 }

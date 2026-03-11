@@ -53,10 +53,10 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       {/* Header + Date Nav */}
       <div className="space-y-3">
-        <h1 className="text-2xl font-bold text-slate-100">Daily Summary</h1>
+        <h1 className="text-2xl font-bold text-neutral-100">Daily Summary</h1>
         <Suspense
           fallback={
-            <div className="h-10 w-80 animate-pulse rounded-lg bg-slate-800/50" />
+            <div className="h-10 w-80 animate-pulse rounded-lg bg-neutral-800/50" />
           }
         >
           <DateNav currentDate={date} />
@@ -92,54 +92,54 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
       </div>
 
       {/* Submitted Applications Table */}
-      <section className="rounded-lg border border-slate-700/50 bg-slate-900">
-        <div className="border-b border-slate-700/50 px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <section className="rounded-lg border border-neutral-700/50 bg-neutral-900">
+        <div className="border-b border-neutral-700/50 px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Submitted Applications ({submitted.length})
           </span>
         </div>
         {submitted.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-slate-500">
+          <p className="px-4 py-6 text-sm text-neutral-500">
             No applications submitted on this date.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-700/50 bg-slate-800/50">
+              <thead className="border-b border-neutral-700/50 bg-neutral-800/50">
                 <tr>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Company
                   </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Title
                   </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Platform
                   </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Score
                   </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Status
                   </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Time
                   </th>
-                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-neutral-400">
                     Link
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/30">
+              <tbody className="divide-y divide-neutral-700/30">
                 {submitted.map((app) => (
                   <tr
                     key={app.id}
-                    className="transition-colors hover:bg-slate-800/40"
+                    className="transition-colors hover:bg-neutral-800/40"
                   >
-                    <td className="px-4 py-2.5 font-medium text-slate-200">
+                    <td className="px-4 py-2.5 font-medium text-neutral-200">
                       {app.company}
                     </td>
-                    <td className="px-4 py-2.5 text-slate-300">{app.title}</td>
+                    <td className="px-4 py-2.5 text-neutral-300">{app.title}</td>
                     <td className="px-4 py-2.5">
                       <PlatformPill platform={app.platform} />
                     </td>
@@ -149,7 +149,7 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
                     <td className="px-4 py-2.5">
                       <StatusBadge status={app.status} />
                     </td>
-                    <td className="px-4 py-2.5 text-xs tabular-nums text-slate-400">
+                    <td className="px-4 py-2.5 text-xs tabular-nums text-neutral-400">
                       {formatTime(app.createdAt)}
                     </td>
                     <td className="px-4 py-2.5">
@@ -158,13 +158,13 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
                           href={app.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-slate-500 transition-colors hover:text-emerald-400"
+                          className="text-neutral-500 transition-colors hover:text-white"
                           title="Open job posting"
                         >
                           <ExternalLinkIcon className="h-4 w-4" />
                         </a>
                       ) : (
-                        <span className="text-slate-600">--</span>
+                        <span className="text-neutral-600">--</span>
                       )}
                     </td>
                   </tr>
@@ -176,14 +176,14 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
       </section>
 
       {/* Form Q&A Audit */}
-      <section className="rounded-lg border border-slate-700/50 bg-slate-900">
-        <div className="border-b border-slate-700/50 px-4 py-3">
+      <section className="rounded-lg border border-neutral-700/50 bg-neutral-900">
+        <div className="border-b border-neutral-700/50 px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               Form Q&A Audit
             </span>
             {formQA.length > 0 && (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-neutral-500">
                 {formQA.length} compan{formQA.length !== 1 ? "ies" : "y"}
               </span>
             )}
@@ -195,32 +195,32 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
       </section>
 
       {/* Failed Submissions */}
-      <section className="rounded-lg border border-rose-500/20 bg-rose-500/5">
-        <div className="border-b border-rose-500/15 px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-rose-400">
+      <section className="rounded-lg border border-neutral-500/20 bg-neutral-500/5">
+        <div className="border-b border-neutral-500/15 px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             Failed Submissions ({failures.length})
           </span>
         </div>
         {failures.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-slate-500">
+          <p className="px-4 py-6 text-sm text-neutral-500">
             No failed submissions on this date.
           </p>
         ) : (
-          <div className="divide-y divide-rose-500/10">
+          <div className="divide-y divide-neutral-500/10">
             {failures.map((fail) => (
               <div
                 key={fail.id}
                 className="flex items-start gap-3 px-4 py-3"
               >
-                <XCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                <XCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-medium text-slate-200">
+                    <span className="text-sm font-medium text-neutral-200">
                       {fail.company}
                     </span>
-                    <span className="text-xs text-slate-400">{fail.title}</span>
+                    <span className="text-xs text-neutral-400">{fail.title}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-rose-300/80">
+                  <p className="mt-0.5 text-xs text-neutral-500">
                     {fail.failureReason}
                   </p>
                 </div>
@@ -229,7 +229,7 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
                     href={fail.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 rounded-lg border border-slate-700/50 bg-slate-800/50 px-2.5 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 hover:text-slate-100"
+                    className="shrink-0 rounded-lg border border-neutral-700/50 bg-neutral-800/50 px-2.5 py-1 text-xs font-medium text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-neutral-100"
                   >
                     Apply manually
                   </a>
@@ -258,28 +258,28 @@ function StatCard({
 }) {
   const accentStyles = {
     emerald: {
-      border: "border-emerald-500/20",
-      bg: "bg-emerald-500/5",
-      icon: "text-emerald-400",
-      value: "text-emerald-400",
+      border: "border-neutral-300/20",
+      bg: "bg-neutral-300/5",
+      icon: "text-white",
+      value: "text-white",
     },
     rose: {
-      border: "border-rose-500/20",
-      bg: "bg-rose-500/5",
-      icon: "text-rose-400",
-      value: "text-rose-400",
+      border: "border-neutral-500/20",
+      bg: "bg-neutral-500/5",
+      icon: "text-neutral-500",
+      value: "text-neutral-500",
     },
     blue: {
-      border: "border-blue-500/20",
-      bg: "bg-blue-500/5",
-      icon: "text-blue-400",
-      value: "text-blue-400",
+      border: "border-neutral-400/20",
+      bg: "bg-neutral-400/5",
+      icon: "text-neutral-300",
+      value: "text-neutral-300",
     },
     slate: {
-      border: "border-slate-700/50",
-      bg: "bg-slate-900",
-      icon: "text-slate-400",
-      value: "text-slate-200",
+      border: "border-neutral-700/50",
+      bg: "bg-neutral-900",
+      icon: "text-neutral-400",
+      value: "text-neutral-200",
     },
   };
 
@@ -297,7 +297,7 @@ function StatCard({
           {value}
         </span>
       </div>
-      <p className="mt-1 text-xs text-slate-500">{label}</p>
+      <p className="mt-1 text-xs text-neutral-500">{label}</p>
     </div>
   );
 }
@@ -306,18 +306,18 @@ function StatCard({
 
 function PlatformPill({ platform }: { platform: string }) {
   const styles: Record<string, string> = {
-    linkedin: "bg-blue-500/15 text-blue-400",
-    indeed: "bg-purple-500/15 text-purple-400",
-    greenhouse: "bg-emerald-500/15 text-emerald-400",
-    lever: "bg-cyan-500/15 text-cyan-400",
-    direct: "bg-amber-500/15 text-amber-400",
-    referral: "bg-rose-500/15 text-rose-400",
+    linkedin: "bg-neutral-700/30 text-neutral-300",
+    indeed: "bg-neutral-700/30 text-neutral-300",
+    greenhouse: "bg-neutral-700/30 text-neutral-300",
+    lever: "bg-neutral-700/30 text-neutral-300",
+    direct: "bg-neutral-700/30 text-neutral-400",
+    referral: "bg-neutral-700/30 text-neutral-500",
   };
 
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-        styles[platform] ?? "bg-slate-700/50 text-slate-400"
+        styles[platform] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
       {platform}

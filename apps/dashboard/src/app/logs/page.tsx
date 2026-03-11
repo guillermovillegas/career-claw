@@ -21,15 +21,15 @@ export default async function LogsPage() {
   if (fetchError) {
     return (
       <div className="space-y-3">
-        <h1 className="text-sm font-semibold text-slate-300">Logs</h1>
-        <div className="rounded-lg border border-rose-700/50 bg-rose-900/10 px-4 py-6">
-          <p className="text-xs font-semibold text-rose-400 mb-1">
+        <h1 className="text-sm font-semibold text-neutral-300">Logs</h1>
+        <div className="rounded-lg border border-neutral-700/50 bg-neutral-900/10 px-4 py-6">
+          <p className="text-xs font-semibold text-neutral-400 mb-1">
             Query error
           </p>
-          <p className="text-xs text-rose-300 font-mono break-all">
+          <p className="text-xs text-neutral-300 font-mono break-all">
             {fetchError}
           </p>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-neutral-500">
             Check Supabase RLS policies on automation_logs and
             communication_log tables.
           </p>

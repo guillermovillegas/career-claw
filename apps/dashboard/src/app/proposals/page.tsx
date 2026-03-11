@@ -24,30 +24,30 @@ export default async function ProposalsPage({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline gap-3">
-        <h1 className="text-sm font-semibold text-slate-300">
+        <h1 className="text-sm font-semibold text-neutral-300">
           Freelance Proposals
         </h1>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-neutral-500">
           {proposals.length} proposals · {jobLeads.length} leads
         </span>
       </div>
 
       {/* Freelance job leads discovered by daily search */}
       {jobLeads.length > 0 && (
-        <div className="rounded-lg border border-slate-700/50">
-          <div className="border-b border-slate-700/50 bg-slate-800/80 px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <div className="rounded-lg border border-neutral-700/50">
+          <div className="border-b border-neutral-700/50 bg-neutral-800/80 px-3 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               Discovered Leads — Upwork / Fiverr
             </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-700/50 bg-slate-900/60">
+              <thead className="border-b border-neutral-700/50 bg-neutral-900/60">
                 <tr>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-500">Score</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-500">Project</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-500">Platform</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-slate-500">Found</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Score</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Project</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Platform</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Found</th>
                   <th className="px-3 py-2 w-6" />
                 </tr>
               </thead>
@@ -69,25 +69,25 @@ export default async function ProposalsPage({
 
 function JobLeadRow({ job }: { job: Job }) {
   return (
-    <tr className="transition-colors hover:bg-slate-800/40">
+    <tr className="transition-colors hover:bg-neutral-800/40">
       <td className="px-3 py-2">
         <ScoreBadge score={job.match_score} />
       </td>
       <td className="px-3 py-2 max-w-xs">
-        <p className="font-medium text-slate-200 truncate">{job.title}</p>
+        <p className="font-medium text-neutral-200 truncate">{job.title}</p>
         {job.company && (
-          <p className="text-slate-500 truncate">{job.company}</p>
+          <p className="text-neutral-500 truncate">{job.company}</p>
         )}
       </td>
-      <td className="px-3 py-2 capitalize text-slate-500">{job.platform}</td>
-      <td className="px-3 py-2 tabular-nums text-slate-500">{formatDate(job.created_at)}</td>
+      <td className="px-3 py-2 capitalize text-neutral-500">{job.platform}</td>
+      <td className="px-3 py-2 tabular-nums text-neutral-500">{formatDate(job.created_at)}</td>
       <td className="px-3 py-2">
         {job.url ? (
           <a
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-slate-600 hover:text-emerald-400 transition-colors"
+            className="text-neutral-600 hover:text-white transition-colors"
             title="Open project"
           >
             <ExternalLinkIcon className="h-3.5 w-3.5" />

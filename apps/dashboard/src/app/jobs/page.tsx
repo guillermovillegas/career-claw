@@ -28,13 +28,11 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   ).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-baseline gap-3">
-        <h1 className="text-sm font-semibold text-slate-300">
-          Full-Time Jobs
-        </h1>
-        <span className="text-xs text-slate-500">
-          {jobs.length} tracked · {appliedCount} applied
+        <h1 className="text-lg font-semibold text-white tracking-tight">Jobs</h1>
+        <span className="text-[11px] text-neutral-600 tabular-nums">
+          {jobs.length} tracked / {appliedCount} applied
         </span>
       </div>
       <JobsTable jobs={jobs} />

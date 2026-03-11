@@ -28,7 +28,7 @@ export default async function JobDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: timeline (2/3) */}
         <div className="lg:col-span-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-3">
             Timeline
           </h2>
           <Timeline job={job} logs={logs} />
@@ -36,7 +36,7 @@ export default async function JobDetailPage({ params }: PageProps) {
 
         {/* Right: job details (1/3) */}
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-3">
             Details
           </h2>
           <JobDetails job={job} />
@@ -54,12 +54,12 @@ function JobHeader({ job }: { job: JobDetail }) {
       <div className="flex items-start gap-2 flex-wrap">
         <Link
           href="/jobs"
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors mt-0.5"
+          className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors mt-0.5"
         >
           Jobs
         </Link>
-        <span className="text-xs text-slate-700 mt-0.5">/</span>
-        <h1 className="text-sm font-semibold text-slate-200">{job.title}</h1>
+        <span className="text-xs text-neutral-700 mt-0.5">/</span>
+        <h1 className="text-sm font-semibold text-neutral-200">{job.title}</h1>
         <div className="flex items-center gap-1.5 flex-wrap ml-1">
           <ScoreBadge score={job.match_score} />
           <PlatformBadge platform={job.platform} />
@@ -68,7 +68,7 @@ function JobHeader({ job }: { job: JobDetail }) {
               href={job.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-600 hover:text-emerald-400 transition-colors"
+              className="text-neutral-600 hover:text-white transition-colors"
               title="Open job posting"
             >
               <ExternalLinkIcon className="h-3.5 w-3.5" />
@@ -76,7 +76,7 @@ function JobHeader({ job }: { job: JobDetail }) {
           )}
         </div>
       </div>
-      <p className="text-xs text-slate-500">{job.company}</p>
+      <p className="text-xs text-neutral-500">{job.company}</p>
     </div>
   );
 }
@@ -104,8 +104,8 @@ function JobDetails({ job }: { job: JobDetail }) {
         {rows.map(({ label, value }) =>
           value ? (
             <div key={label} className="flex justify-between gap-2 text-xs">
-              <dt className="text-slate-500 shrink-0">{label}</dt>
-              <dd className="text-slate-300 text-right capitalize">{value}</dd>
+              <dt className="text-neutral-500 shrink-0">{label}</dt>
+              <dd className="text-neutral-300 text-right capitalize">{value}</dd>
             </div>
           ) : null
         )}
@@ -113,10 +113,10 @@ function JobDetails({ job }: { job: JobDetail }) {
 
       {descriptionSnippet && (
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             Description
           </p>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-neutral-400 leading-relaxed">
             {descriptionSnippet}
           </p>
         </div>
@@ -154,7 +154,7 @@ function Timeline({
           time={formatDateTime(cronLog.created_at)}
           isLast={false}
         >
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-neutral-500">
             {formatLabel(cronLog.action_type)}
             {cronLog.platform ? ` · ${cronLog.platform}` : ""}
             {cronLog.success ? "" : " · failed"}
@@ -170,7 +170,7 @@ function Timeline({
         time={formatDateTime(job.created_at)}
         isLast={apps.length === 0}
       >
-        <p className="text-xs text-slate-500 capitalize">
+        <p className="text-xs text-neutral-500 capitalize">
           {job.platform}
           {job.job_type ? ` · ${job.job_type}` : ""}
         </p>
@@ -185,7 +185,7 @@ function Timeline({
           time=""
           isLast={true}
         >
-          <p className="text-xs text-slate-600">Awaiting action</p>
+          <p className="text-xs text-neutral-600">Awaiting action</p>
         </TimelineEvent>
       )}
 
@@ -250,7 +250,7 @@ function AppEvents({
       >
         <AppStatusBadge status={app.status} />
         {app.cover_letter && (
-          <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+          <p className="mt-1 text-xs text-neutral-500 line-clamp-2">
             {app.cover_letter.slice(0, 120)}
             {app.cover_letter.length > 120 ? "…" : ""}
           </p>
@@ -266,7 +266,7 @@ function AppEvents({
           time={app.application_date ?? ""}
           isLast={isLast()}
         >
-          <p className="text-xs text-slate-500">Formal submission date</p>
+          <p className="text-xs text-neutral-500">Formal submission date</p>
         </TimelineEvent>
       )}
 
@@ -298,7 +298,7 @@ function AppEvents({
           time=""
           isLast={isLast()}
         >
-          <p className="text-xs text-slate-400 whitespace-pre-wrap break-words">
+          <p className="text-xs text-neutral-400 whitespace-pre-wrap break-words">
             {app.notes}
           </p>
         </TimelineEvent>
@@ -312,11 +312,11 @@ function AppEvents({
 type DotColor = "slate" | "blue" | "emerald" | "amber" | "violet";
 
 const DOT_COLORS: Record<DotColor, string> = {
-  slate: "bg-slate-600 ring-slate-700",
-  blue: "bg-blue-500 ring-blue-800",
-  emerald: "bg-emerald-500 ring-emerald-800",
-  amber: "bg-amber-500 ring-amber-800",
-  violet: "bg-violet-500 ring-violet-800",
+  slate: "bg-neutral-600 ring-neutral-700",
+  blue: "bg-white/[0.20] ring-neutral-700",
+  emerald: "bg-white/[0.30] ring-neutral-600",
+  amber: "bg-white/[0.15] ring-neutral-700",
+  violet: "bg-white/[0.12] ring-neutral-700",
 };
 
 function TimelineEvent({
@@ -341,16 +341,16 @@ function TimelineEvent({
           className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ring-2 ${DOT_COLORS[color]}`}
         />
         {!isLast && (
-          <span className="w-px grow border-l border-slate-700/50 my-1" />
+          <span className="w-px grow border-l border-neutral-700/50 my-1" />
         )}
       </div>
 
       {/* Content */}
       <div className={`pb-4 min-w-0 flex-1 ${isLast ? "pb-0" : ""}`}>
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-xs font-medium text-slate-300">{title}</span>
+          <span className="text-xs font-medium text-neutral-300">{title}</span>
           {time && (
-            <span className="tabular-nums text-xs text-slate-500">{time}</span>
+            <span className="tabular-nums text-xs text-neutral-500">{time}</span>
           )}
         </div>
         {children && <div className="mt-0.5">{children}</div>}
@@ -363,20 +363,20 @@ function TimelineEvent({
 
 function AppStatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    interested: "bg-slate-700/60 text-slate-400",
-    applied: "bg-blue-500/15 text-blue-400",
-    phone_screen: "bg-violet-500/15 text-violet-400",
-    interview: "bg-amber-500/15 text-amber-400",
-    final: "bg-orange-500/15 text-orange-400",
-    offer: "bg-emerald-500/15 text-emerald-400",
-    hired: "bg-emerald-600/25 text-emerald-300",
-    rejected: "bg-rose-500/15 text-rose-400",
-    withdrawn: "bg-slate-700/50 text-slate-500",
+    interested: "bg-neutral-700/60 text-neutral-400",
+    applied: "bg-white/[0.20]/15 text-neutral-300",
+    phone_screen: "bg-white/[0.12]/15 text-neutral-300",
+    interview: "bg-white/[0.15]/15 text-neutral-300",
+    final: "bg-white/[0.10] text-neutral-200",
+    offer: "bg-white/[0.30]/15 text-white",
+    hired: "bg-white/[0.14] text-white",
+    rejected: "bg-white/[0.04] text-neutral-500",
+    withdrawn: "bg-neutral-700/50 text-neutral-500",
   };
   return (
     <span
       className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-        styles[status] ?? "bg-slate-700/50 text-slate-400"
+        styles[status] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
       {status.replace(/_/g, " ")}
@@ -386,7 +386,7 @@ function AppStatusBadge({ status }: { status: string }) {
 
 function PlatformBadge({ platform }: { platform: string }) {
   return (
-    <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize bg-slate-700/60 text-slate-400">
+    <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize bg-neutral-700/60 text-neutral-400">
       {platform}
     </span>
   );
