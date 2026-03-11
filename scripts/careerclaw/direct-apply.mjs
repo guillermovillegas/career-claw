@@ -426,7 +426,7 @@ const [allJobs, allApps] = await Promise.all([
   sbGetAll(
     "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,location,salary_min,salary_max&order=match_score.desc",
   ),
-  sbGetAll("/rest/v1/applications?select=id,job_id,status"),
+  sbGetAll("/rest/v1/applications?select=id,job_id,status,cover_letter"),
 ]);
 
 if (!Array.isArray(allJobs)) {
@@ -434,8 +434,12 @@ if (!Array.isArray(allJobs)) {
   process.exit(1);
 }
 
-// Jobs with non-interested apps are "already handled" — skip them
-const appliedIds = new Set(allApps.filter((a) => a.status !== "interested").map((a) => a.job_id));
+// Jobs with non-interested apps OR interested apps that already have a cover letter — skip them
+const appliedIds = new Set(
+  allApps
+    .filter((a) => a.status !== "interested" || (a.cover_letter && a.cover_letter.length > 50))
+    .map((a) => a.job_id),
+);
 // Jobs with interested apps need their existing app record updated (not a new POST)
 const interestedAppByJobId = new Map();
 for (const a of allApps) {
@@ -518,6 +522,7 @@ function locationPriority(job) {
 
 // Filter: unapplied, full-time, score >= MIN_SCORE, no 30-day duplicate
 let dedupSkipped = 0;
+const seenUrls = new Set();
 const candidates = allJobs
   .filter((j) => {
     if (!j.id || appliedIds.has(j.id)) {
@@ -532,6 +537,14 @@ const candidates = allJobs
     if (isDuplicate(j)) {
       dedupSkipped++;
       return false;
+    }
+    // URL dedup within batch — skip if same URL already included
+    if (j.url && seenUrls.has(j.url)) {
+      dedupSkipped++;
+      return false;
+    }
+    if (j.url) {
+      seenUrls.add(j.url);
     }
     return true;
   })
