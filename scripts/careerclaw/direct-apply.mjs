@@ -101,6 +101,26 @@ function sbGet(path) {
   }).then((r) => JSON.parse(r.body));
 }
 
+/** Paginated fetch — PostgREST caps at 1000 rows per request */
+async function sbGetAll(basePath) {
+  const PAGE_SIZE = 1000;
+  let all = [];
+  let offset = 0;
+  while (true) {
+    const sep = basePath.includes("?") ? "&" : "?";
+    const page = await sbGet(`${basePath}${sep}limit=${PAGE_SIZE}&offset=${offset}`);
+    if (!Array.isArray(page) || page.length === 0) {
+      break;
+    }
+    all = all.concat(page);
+    if (page.length < PAGE_SIZE) {
+      break;
+    }
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 function sbPost(path, data) {
   const body = JSON.stringify(data);
   return request(SUPABASE_URL + path, {
@@ -401,12 +421,12 @@ console.log(`Limit:     ${LIMIT}`);
 console.log(`Dry run:   ${DRY_RUN}`);
 console.log("");
 
-// Fetch jobs and applications
+// Fetch jobs and applications (paginated — PostgREST caps at 1000)
 const [allJobs, allApps] = await Promise.all([
-  sbGet(
-    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,location,salary_min,salary_max&order=match_score.desc&limit=1000",
+  sbGetAll(
+    "/rest/v1/jobs?select=id,title,company,url,match_score,job_type,work_mode,location,salary_min,salary_max&order=match_score.desc",
   ),
-  sbGet("/rest/v1/applications?select=job_id"),
+  sbGetAll("/rest/v1/applications?select=job_id"),
 ]);
 
 if (!Array.isArray(allJobs)) {
@@ -434,17 +454,21 @@ const recentJobIds = [
 ];
 let recentAppliedRoles = new Set();
 if (recentJobIds.length) {
-  const recentJobs = await sbGet(
-    `/rest/v1/jobs?id=in.(${recentJobIds.join(",")})&select=id,title,company`,
-  );
-  if (Array.isArray(recentJobs)) {
-    recentAppliedRoles = new Set(
-      recentJobs.map(
-        (j) =>
-          `${(j.company || "").toLowerCase().trim()}|||${(j.title || "").toLowerCase().trim()}`,
-      ),
-    );
+  // Chunk IDs to avoid HTTP header overflow (PostgREST in.() in URL)
+  const CHUNK_SIZE = 200;
+  const allRecentJobs = [];
+  for (let i = 0; i < recentJobIds.length; i += CHUNK_SIZE) {
+    const chunk = recentJobIds.slice(i, i + CHUNK_SIZE);
+    const jobs = await sbGet(`/rest/v1/jobs?id=in.(${chunk.join(",")})&select=id,title,company`);
+    if (Array.isArray(jobs)) {
+      allRecentJobs.push(...jobs);
+    }
   }
+  recentAppliedRoles = new Set(
+    allRecentJobs.map(
+      (j) => `${(j.company || "").toLowerCase().trim()}|||${(j.title || "").toLowerCase().trim()}`,
+    ),
+  );
 }
 console.log(
   `Dedup: ${recentAppliedJobIds.size} applied in last ${DEDUP_DAYS} days (${recentAppliedRoles.size} unique company+role combos)`,
