@@ -81,6 +81,7 @@ export function getFormAnswers() {
     needs_sponsorship: p.professional?.needs_sponsorship ?? false,
     zip_code: p.personal?.zip_code || "",
     pronouns: p.personal?.pronouns || "",
+    linkedin_url: p.online?.linkedin || "",
   };
 }
 
@@ -109,13 +110,25 @@ export function buildCoverLetterPrompt(title, company, mode) {
   const shuffled = bullets.toSorted(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, Math.min(3, shuffled.length)).join("\n");
 
+  // Random opener style to force variety across letters
+  const openers = [
+    `Start with a concrete metric from the FIRST bullet below — lead with a number.`,
+    `Open with "At [previous company]," then state a specific result with numbers.`,
+    `Start by naming what you built or shipped, then the measurable outcome.`,
+    `Lead with "When [situation], [what you did], resulting in [metric]."`,
+    `Open with the business problem you solved, then the quantified result.`,
+    `Start with "Turning [challenge] into [outcome]" using a specific number.`,
+    `Lead with a team or portfolio scale number, then what you delivered.`,
+  ];
+  const openerHint = openers[Math.floor(Math.random() * openers.length)];
+
   return `Write a cover letter (150-200 words) for ${cl.fullName} applying to: ${title} at ${company} (${mode}).
 
 STRUCTURE — three paragraphs, 150-200 words total:
 
-Paragraph 1 (4-5 sentences): Connect the most relevant achievement to the ${title} role at ${company}. Do NOT start with "I" as the first word. Lead with a fact, metric, or outcome. Name "${company}" at least once. Use exact numbers from the background below.
+Paragraph 1 (4-5 sentences): ${openerHint} Connect the most relevant achievement to the ${title} role at ${company}. Do NOT start with "I" as the first word. Name "${company}" at least once. Use exact numbers from the background below.
 
-Paragraph 2 (4-5 sentences): A second, different proof point that shows range. Use at least 2 different metrics/numbers. If paragraph 1 used AI/ML experience, use business/portfolio here (or vice versa). Connect it to what a ${title} at ${company} would need.
+Paragraph 2 (4-5 sentences): A second, DIFFERENT proof point that shows range. Use at least 2 different metrics/numbers. If paragraph 1 used AI/ML experience, use business/portfolio here (or vice versa). Connect it to what a ${title} at ${company} would need.
 
 Paragraph 3 (2-3 sentences): Forward-looking close. Reference ${company} by name again. End the letter with the last sentence — NO signature, NO name, NO sign-off after the final sentence.
 

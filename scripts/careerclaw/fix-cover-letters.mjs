@@ -248,14 +248,20 @@ console.log(`Limit: ${LIMIT}`);
 console.log(`Dry run: ${DRY_RUN}`);
 console.log("");
 
-// Fetch applications that need fixing
+// Fetch applications that need fixing — prioritize those without cover letters
 let query =
   "/rest/v1/applications?select=id,job_id,status,cover_letter&order=created_at.desc&limit=" + LIMIT;
 if (TARGET_STATUS) {
   query += "&status=eq." + TARGET_STATUS;
 }
+// First pass: get apps missing cover letters entirely
+let queryMissing = query + "&cover_letter=is.null";
 
-const apps = await sbGet(query);
+// First: apps missing CLs entirely, then apps with bad CLs
+let apps = await sbGet(queryMissing);
+if (!Array.isArray(apps) || apps.length === 0) {
+  apps = await sbGet(query);
+}
 if (!Array.isArray(apps)) {
   console.error("Error fetching applications:", apps);
   process.exit(1);

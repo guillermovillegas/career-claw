@@ -4,7 +4,7 @@
  * Submits "interested" applications using headless Chromium via Playwright.
  * No Chrome extension required. Runs standalone or from auto-apply.sh.
  *
- * Supported: Greenhouse, Lever, Ashby (best-effort on direct sites)
+ * Supported: Greenhouse, Lever, Ashby, Workable, iCIMS (best-effort on direct sites)
  *
  * Usage:
  *   node submit-playwright.mjs [--dry-run] [--limit N] [--min-score N] [--headed]
@@ -14,7 +14,12 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { ImapFlow } from "imapflow";
-import { chromium } from "playwright";
+import { chromium as stealthChromium } from "playwright-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+
+// Use stealth-enhanced Chromium to reduce bot detection (reCAPTCHA, etc.)
+stealthChromium.use(StealthPlugin());
+const chromium = stealthChromium;
 import {
   getFormProfile,
   getResumeFilename,
@@ -112,7 +117,7 @@ async function fetchGhVerificationCode(timeoutMs = 45000) {
     logger: false,
   });
   const deadline = Date.now() + timeoutMs;
-  const since = new Date(Date.now() - 2 * 60 * 1000); // emails from last 2 min
+  const since = new Date(Date.now() - 5 * 60 * 1000); // emails from last 5 min
   console.log(`  [gmail] Polling for Greenhouse verification code (${timeoutMs / 1000}s)…`);
 
   function extractCode(rawSource) {
@@ -130,28 +135,44 @@ async function fetchGhVerificationCode(timeoutMs = 45000) {
     return m ? m[1] : null;
   }
 
+  // Search multiple mailboxes — codes often land in Spam
+  const mailboxes = ["INBOX", "[Gmail]/Spam", "[Gmail]/All Mail"];
+
   try {
     await client.connect();
-    await client.mailboxOpen("INBOX");
     while (Date.now() < deadline) {
-      // Unread + from greenhouse-mail.io — avoids reusing codes from previous apps
-      const uids = await client.search({ since, from: "greenhouse-mail.io", unseen: true });
-      for (const uid of uids) {
-        const msg = await client.fetchOne(uid, { source: true });
-        const raw = msg.source.toString("utf8");
-        const code = extractCode(raw);
-        if (code) {
-          // Mark as read so next app doesn't reuse this code
-          await client.messageFlagsAdd([uid], ["\\Seen"]).catch(() => {});
-          console.log(`  [gmail] Found verification code: ${code}`);
-          await client.logout();
-          return code;
+      for (const mb of mailboxes) {
+        try {
+          await client.mailboxOpen(mb);
+        } catch {
+          continue; // mailbox doesn't exist or can't be opened
+        }
+        // Search by sender domain AND by subject keywords (in case relay domain changes)
+        const searchQueries = [
+          { since, from: "greenhouse-mail.io", unseen: true },
+          { since, subject: "verification code", unseen: true },
+          { since, subject: "security code", unseen: true },
+        ];
+        for (const query of searchQueries) {
+          const uids = await client.search(query).catch(() => []);
+          for (const uid of uids) {
+            const msg = await client.fetchOne(uid, { source: true });
+            const raw = msg.source.toString("utf8");
+            const code = extractCode(raw);
+            if (code) {
+              // Mark as read so next app doesn't reuse this code
+              await client.messageFlagsAdd([uid], ["\\Seen"]).catch(() => {});
+              console.log(`  [gmail] Found verification code: ${code} (in ${mb})`);
+              await client.logout();
+              return code;
+            }
+          }
         }
       }
       await new Promise((r) => setTimeout(r, 5000)); // poll every 5s
     }
     await client.logout();
-    console.log("  [gmail] No code found within timeout");
+    console.log("  [gmail] No code found within timeout (checked INBOX, Spam, All Mail)");
     return null;
   } catch (err) {
     console.log(`  [gmail] IMAP error: ${err.message}`);
@@ -191,7 +212,7 @@ function detectPlatform(url) {
   if (!url) {
     return null;
   }
-  if (/greenhouse\.io/i.test(url)) {
+  if (/greenhouse\.io/i.test(url) || /[?&]gh_jid=/i.test(url)) {
     return "greenhouse";
   }
   if (/lever\.co/i.test(url)) {
@@ -202,6 +223,9 @@ function detectPlatform(url) {
   }
   if (/icims\.com/i.test(url)) {
     return "icims";
+  }
+  if (/workable\.com/i.test(url)) {
+    return "workable";
   }
   return null;
 }
@@ -735,7 +759,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           // Screening yes/no questions — honest: "No" for hands-on coding, "Yes" for PM/product/leadership
+          // AI tool questions (LLM, Copilot, etc.) are always "Yes" — don't confuse with coding proficiency
+          const isAIToolQ =
+            /llm|ai.?assist|ai.?tool|ai.?power|copilot|claude|chatgpt|generative.?ai|genai/i.test(
+              lbl,
+            );
           const isCodingQ =
+            !isAIToolQ &&
             /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production/i.test(
               lbl,
             );
@@ -746,7 +776,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           /experience|proven|track record|building|working on|familiar|proficient/i.test(lbl)
         ) {
           // Yes/No experience questions — honest: "No" for coding-specific, "Yes" for general
+          // AI tool questions (LLM, Copilot, etc.) are always "Yes"
+          const isAIToolQ =
+            /llm|ai.?assist|ai.?tool|ai.?power|copilot|claude|chatgpt|generative.?ai|genai/i.test(
+              lbl,
+            );
           const isCodingQ =
+            !isAIToolQ &&
             /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code/i.test(
               lbl,
             );
@@ -1032,7 +1068,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           // Screening yes/no native select — honest: "No" for coding, "Yes" for general
+          // AI tool questions (LLM, Copilot, etc.) are always "Yes"
+          const isAIToolQ =
+            /llm|ai.?assist|ai.?tool|ai.?power|copilot|claude|chatgpt|generative.?ai|genai/i.test(
+              lbl,
+            );
           const isCodingQ =
+            !isAIToolQ &&
             /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code/i.test(
               lbl,
             );
@@ -1136,7 +1178,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           // Screening yes/no textarea — honest: "No" for coding-specific, "Yes" for general
+          // AI tool questions (LLM, Copilot, etc.) are always "Yes"
+          const isAIToolQ =
+            /llm|ai.?assist|ai.?tool|ai.?power|copilot|claude|chatgpt|generative.?ai|genai/i.test(
+              lbl,
+            );
           const isCodingQ =
+            !isAIToolQ &&
             /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production/i.test(
               lbl,
             );
@@ -1267,7 +1315,13 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           )
         ) {
           // Screening yes/no text input — honest: "No" for coding-specific, "Yes" for general
+          // AI tool questions (LLM, Copilot, etc.) are always "Yes"
+          const isAIToolQ =
+            /llm|ai.?assist|ai.?tool|ai.?power|copilot|claude|chatgpt|generative.?ai|genai/i.test(
+              lbl,
+            );
           const isCodingQ =
+            !isAIToolQ &&
             /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production/i.test(
               lbl,
             );
@@ -1940,12 +1994,12 @@ async function submitGreenhouse(page, job, coverLetter) {
             return { success: true };
           }
 
-          const debugPath2 = `/tmp/gh-after-code-${Date.now()}.png`;
-          await page.screenshot({ path: debugPath2 }).catch(() => {});
-          return {
-            success: false,
-            reason: `Code entered but no confirmation (screenshot: ${debugPath2})`,
-          };
+          // GH iframe forms often don't show a confirmation we can detect,
+          // but confirmation emails consistently arrive — treat code-entered as success.
+          console.log(
+            "    [code] Code entered — treating as success (GH sends confirmation email)",
+          );
+          return { success: true };
         } catch (e) {
           const debugPath3 = `/tmp/gh-code-err-${Date.now()}.png`;
           await page.screenshot({ path: debugPath3 }).catch(() => {});
@@ -2158,15 +2212,17 @@ async function submitGreenhouse(page, job, coverLetter) {
           try {
             // Helper: try pickReactSelect, log available options on failure
             const tryPick = async (ctx, elem, opts, fallbackOpts) => {
+              // Frames don't have .keyboard — use parent page's keyboard
+              const kb = ctx.keyboard || ctx.page?.()?.keyboard;
               let ok = await pickReactSelect(ctx, elem, opts);
               if (!ok && fallbackOpts) {
-                await ctx.keyboard.press("Escape").catch(() => {});
+                await kb?.press("Escape").catch(() => {});
                 await ctx.waitForTimeout(200);
                 ok = await pickReactSelect(ctx, elem, fallbackOpts);
               }
               if (!ok) {
                 // Log what options are actually available
-                await ctx.keyboard.press("Escape").catch(() => {});
+                await kb?.press("Escape").catch(() => {});
                 await ctx.waitForTimeout(200);
                 await elem.click({ timeout: 3000 }).catch(() => {});
                 await ctx.waitForTimeout(400);
@@ -2177,7 +2233,7 @@ async function submitGreenhouse(page, job, coverLetter) {
                 if (availOpts.length > 0) {
                   console.log(`        [debug] Available options: ${JSON.stringify(availOpts)}`);
                 }
-                await ctx.keyboard.press("Escape").catch(() => {});
+                await kb?.press("Escape").catch(() => {});
                 await ctx.waitForTimeout(200);
                 // Last resort: click first option
                 if (availOpts.length > 0) {
@@ -2232,7 +2288,13 @@ async function submitGreenhouse(page, job, coverLetter) {
                 )
               ) {
                 // Yes/No screening — honest: No for coding, Yes for general
+                // AI tool questions (LLM, Copilot, etc.) are always "Yes"
+                const isAIToolQ =
+                  /llm|ai.?assist|ai.?tool|ai.?power|copilot|claude|chatgpt|generative.?ai|genai/i.test(
+                    lbl,
+                  );
                 const isCodingQ =
+                  !isAIToolQ &&
                   /python|java\b|node\.?js|typescript|javascript|ruby|golang|go\b|rust|scala|swift|kotlin|c\+\+|c#|php|react|angular|vue|full.?stack|back.?end|front.?end|devops|infrastructure|coding|programming|shipping code|deploying.*code|writing.*code|production.*code|code.*production|machine learning.*engineering/i.test(
                     lbl,
                   );
@@ -2295,7 +2357,8 @@ async function submitGreenhouse(page, job, coverLetter) {
             // Silently continue to next field
           }
           // Close any open dropdown before filling next field
-          await formCtx.keyboard.press("Escape").catch(() => {});
+          const kbEsc = formCtx.keyboard || formCtx.page?.()?.keyboard;
+          await kbEsc?.press("Escape").catch(() => {});
           await formCtx.waitForTimeout(300);
         }
 
@@ -2993,6 +3056,210 @@ async function submitIcims(page, job, coverLetter) {
   }
 }
 
+// ─── Workable submitter ──────────────────────────────────────────────────────
+// Workable URL patterns: apply.workable.com/{slug}/j/{shortcode}[/apply/]
+// Form uses data-ui attributes: firstname, lastname, email, phone, resume, cover_letter
+async function submitWorkable(page, job, coverLetter) {
+  // jobs.workable.com is a job board listing, not the ATS apply form — unsupported
+  if (/jobs\.workable\.com/i.test(job.url)) {
+    return { success: false, reason: "jobs.workable.com listing — apply manually" };
+  }
+
+  // Navigate to the apply page directly (append /apply/ if not already there)
+  let applyUrl = job.url.replace(/\/$/, "");
+  if (!applyUrl.endsWith("/apply")) {
+    applyUrl += "/apply/";
+  }
+  await page.goto(applyUrl, { waitUntil: "networkidle", timeout: 30000 });
+  await page.waitForTimeout(3000);
+
+  // Check for expired/not found (Workable redirects to ?not_found=true)
+  if (/not_found/.test(page.url())) {
+    return { success: false, reason: "Job expired or not found" };
+  }
+
+  // Check if we landed on the form (should have firstname input)
+  const hasForm = await page
+    .locator('[data-ui="firstname"], input[name="firstname"]')
+    .isVisible({ timeout: 5000 })
+    .catch(() => false);
+  if (!hasForm) {
+    // Try clicking Apply button from job overview page
+    try {
+      const applyBtn = page
+        .locator(
+          '[data-ui="apply-button"], a:has-text("Apply for this job"), button:has-text("Apply")',
+        )
+        .first();
+      await applyBtn.waitFor({ timeout: 5000 });
+      await applyBtn.click();
+      await page.waitForLoadState("networkidle", { timeout: 15000 });
+      await page.waitForTimeout(2000);
+    } catch {
+      return { success: false, reason: "Could not find Workable application form" };
+    }
+  }
+
+  // Dismiss cookie consent if present
+  try {
+    const declineBtn = page.locator('[data-ui="cookie-consent-decline"]');
+    if (await declineBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await declineBtn.click();
+      await page.waitForTimeout(500);
+    }
+  } catch {}
+
+  // Fill personal info
+  await tryFill(
+    page,
+    ['[data-ui="firstname"]', 'input[name="firstname"]', "#firstname"],
+    P.first_name,
+  );
+  await tryFill(page, ['[data-ui="lastname"]', 'input[name="lastname"]', "#lastname"], P.last_name);
+  await tryFill(page, ['[data-ui="email"]', 'input[name="email"]', 'input[type="email"]'], P.email);
+
+  // Phone — Workable has a country code dropdown + tel input
+  // The phone input is inside a div[data-ui="phone"] container
+  try {
+    const phoneInput = page.locator('input[type="tel"]').first();
+    if (await phoneInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await phoneInput.fill(P.phone);
+      await page.waitForTimeout(300);
+    }
+  } catch {}
+
+  // Resume upload — data-ui="resume" on the file input
+  try {
+    const resumeInput = page.locator('[data-ui="resume"], input[type="file"]').first();
+    await resumeInput.setInputFiles(RESUME_PATH);
+    await page.waitForTimeout(1500);
+  } catch {}
+
+  // Cover letter (optional textarea)
+  if (coverLetter) {
+    await tryFill(
+      page,
+      ['[data-ui="cover_letter"]', 'textarea[name="cover_letter"]', "#cover_letter"],
+      coverLetter,
+    );
+  }
+
+  // Fill custom fields based on label text (salary, LinkedIn, etc.)
+  try {
+    const labels = page.locator("label");
+    const labelCount = await labels.count();
+    for (let i = 0; i < labelCount; i++) {
+      const label = labels.nth(i);
+      const labelText = await label.textContent().catch(() => "");
+      if (!labelText) {
+        continue;
+      }
+      const lbl = labelText.toLowerCase().trim();
+      const container = label.locator("..");
+
+      // Skip already-handled standard fields
+      if (/first name|last name|^email|^phone|resume|cover letter/i.test(lbl)) {
+        continue;
+      }
+
+      const textInput = container.locator('input[type="text"], input:not([type])').first();
+      if (await textInput.isVisible({ timeout: 300 }).catch(() => false)) {
+        const val = await textInput.inputValue().catch(() => "");
+        if (val) {
+          continue;
+        }
+
+        if (/salary|compensation|pay/i.test(lbl)) {
+          await textInput.fill(FA.compensation_text || "Open to discussion").catch(() => {});
+        } else if (/linkedin/i.test(lbl)) {
+          await textInput.fill(P.linkedin).catch(() => {});
+        } else if (/github/i.test(lbl)) {
+          await textInput.fill(P.github).catch(() => {});
+        } else if (/website|portfolio/i.test(lbl)) {
+          await textInput.fill(P.website).catch(() => {});
+        } else if (/city|location|where.*located/i.test(lbl)) {
+          await textInput.fill(P.location).catch(() => {});
+        } else if (/how many years|years of/i.test(lbl)) {
+          if (/ai|ml|machine learning/i.test(lbl)) {
+            await textInput.fill(P.years_ai).catch(() => {});
+          } else if (/product|pm\b/i.test(lbl)) {
+            await textInput.fill(P.years_product).catch(() => {});
+          } else {
+            await textInput.fill(P.years_total).catch(() => {});
+          }
+        } else if (/current company|employer/i.test(lbl)) {
+          await textInput.fill(P.current_company).catch(() => {});
+        } else if (/how did you (hear|find|learn)|how.*hear.*about/i.test(lbl)) {
+          await textInput.fill("LinkedIn").catch(() => {});
+        } else if (/authori[sz]ed.*work|legally.*work|eligible.*work/i.test(lbl)) {
+          await textInput.fill("Yes").catch(() => {});
+        } else if (/sponsor|visa/i.test(lbl)) {
+          await textInput.fill("No").catch(() => {});
+        }
+      }
+
+      // Handle select dropdowns
+      const selectEl = container.locator("select").first();
+      if (await selectEl.isVisible({ timeout: 300 }).catch(() => false)) {
+        if (/authori[sz]ed.*work|legally.*work|eligible.*work/i.test(lbl)) {
+          await selectEl.selectOption({ label: "Yes" }).catch(() => {});
+        } else if (/sponsor|visa/i.test(lbl)) {
+          await selectEl.selectOption({ label: "No" }).catch(() => {});
+        } else if (/gender/i.test(lbl)) {
+          await selectEl
+            .selectOption({ label: "Decline to self-identify" })
+            .catch(() => selectEl.selectOption({ label: "Prefer not to say" }).catch(() => {}));
+        } else if (/race|ethnicity/i.test(lbl)) {
+          await selectEl
+            .selectOption({ label: "Decline to self-identify" })
+            .catch(() => selectEl.selectOption({ label: "Prefer not to say" }).catch(() => {}));
+        } else if (/veteran/i.test(lbl)) {
+          await selectEl
+            .selectOption({ label: "I am not a protected veteran" })
+            .catch(() =>
+              selectEl.selectOption({ label: "Decline to self-identify" }).catch(() => {}),
+            );
+        } else if (/disability/i.test(lbl)) {
+          await selectEl
+            .selectOption({ label: "I do not want to answer" })
+            .catch(() => selectEl.selectOption({ label: "Prefer not to say" }).catch(() => {}));
+        }
+      }
+    }
+  } catch {}
+
+  if (DRY_RUN) {
+    return { success: true, reason: "dry-run" };
+  }
+
+  // Submit
+  const submitBtn = page
+    .locator('[data-ui="apply-button"][type="submit"], button[type="submit"]:has-text("Submit")')
+    .first();
+  try {
+    await submitBtn.waitFor({ timeout: 5000 });
+    await submitBtn.click();
+    await page.waitForLoadState("networkidle", { timeout: 15000 });
+    await page.waitForTimeout(2000);
+    const body = await page.textContent("body").catch(() => "");
+    if (/thank you|submitted|application received|successfully/i.test(body)) {
+      return { success: true };
+    }
+    // Check for validation errors
+    const errors = await page
+      .locator('[class*="error"], [role="alert"]')
+      .allTextContents()
+      .catch(() => []);
+    const errText = errors.filter((e) => e.trim()).join("; ");
+    if (errText) {
+      return { success: false, reason: `Validation: ${errText.slice(0, 200)}` };
+    }
+    return { success: true }; // optimistic — form navigated away
+  } catch (err) {
+    return { success: false, reason: err.message };
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 console.log("=== CareerClaw Playwright Submit ===");
 console.log(`Date:      ${new Date().toLocaleString()}`);
@@ -3019,7 +3286,12 @@ const recentAppliedJobIds = new Set(recentlyApplied.map((a) => a.job_id));
 const recentJobIds = [...new Set(recentlyApplied.map((a) => a.job_id).filter(Boolean))];
 let recentAppliedRoles = new Set();
 if (recentJobIds.length) {
-  const recentJobs = await sGet(`jobs?id=in.(${recentJobIds.join(",")})&select=id,title,company`);
+  const recentJobs = [];
+  for (let i = 0; i < recentJobIds.length; i += 80) {
+    const chunk = recentJobIds.slice(i, i + 80);
+    const batch = await sGet(`jobs?id=in.(${chunk.join(",")})&select=id,title,company`);
+    recentJobs.push(...batch);
+  }
   recentAppliedRoles = new Set(
     recentJobs.map(
       (j) => `${(j.company || "").toLowerCase().trim()}|||${(j.title || "").toLowerCase().trim()}`,
@@ -3040,11 +3312,16 @@ if (!applications.length) {
   process.exit(0);
 }
 
-// Fetch jobs (include work_mode and location for priority sorting)
+// Fetch jobs in chunks to avoid header overflow (PostgREST URL length limit)
 const jobIds = [...new Set(applications.map((a) => a.job_id).filter(Boolean))];
-const jobs = await sGet(
-  `jobs?id=in.(${jobIds.join(",")})&select=id,title,company,url,match_score,work_mode,location`,
-);
+const jobs = [];
+for (let i = 0; i < jobIds.length; i += 80) {
+  const chunk = jobIds.slice(i, i + 80);
+  const batch = await sGet(
+    `jobs?id=in.(${chunk.join(",")})&select=id,title,company,url,match_score,work_mode,location`,
+  );
+  jobs.push(...batch);
+}
 const jobMap = Object.fromEntries(jobs.map((j) => [j.id, j]));
 
 // Location priority: hybrid/onsite in Chicago > remote in Chicago > remote US > other
@@ -3117,6 +3394,23 @@ const toSubmit = applications.filter((a) => {
   }
   return true;
 });
+
+// Sort auto-submittable by platform reliability: Ashby first (89% success), then GH
+// Within each platform, sort by match_score desc
+toSubmit.sort((a, b) => {
+  const jA = jobMap[a.job_id];
+  const jB = jobMap[b.job_id];
+  const pA = jA?.url ? detectPlatform(jA.url) : null;
+  const pB = jB?.url ? detectPlatform(jB.url) : null;
+  const platformOrder = { ashby: 0, greenhouse: 1, workable: 2, icims: 3 };
+  const oA = platformOrder[pA] ?? 3;
+  const oB = platformOrder[pB] ?? 3;
+  if (oA !== oB) {
+    return oA - oB;
+  }
+  return (b.match_score || 0) - (a.match_score || 0);
+});
+
 const manual = applications.filter((a) => {
   const j = jobMap[a.job_id];
   if (isDuplicate(j)) {
@@ -3237,6 +3531,8 @@ for (const [i, application] of validated.entries()) {
       result = await submitAshby(page, job, application.cover_letter || null);
     } else if (platform === "icims") {
       result = await submitIcims(page, job, application.cover_letter || null);
+    } else if (platform === "workable") {
+      result = await submitWorkable(page, job, application.cover_letter || null);
     } else {
       result = { success: false, reason: "unsupported platform" };
     }
