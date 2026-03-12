@@ -228,10 +228,13 @@ function classifyEmail(subject, body) {
   for (const p of INTERVIEW_PATTERNS) {
     if (p.test(text)) {
       // If subject says "thank you for applying", only classify as interview if
-      // the body genuinely mentions scheduling (not just boilerplate "next steps")
+      // the body has EXPLICIT scheduling language (not just boilerplate like
+      // "meet with our team" or "availability" which appear in confirmation emails)
       if (isThankYouSubject) {
         const hasStrongInterview =
-          /schedule.{0,20}interview|calendly\.com|book a time|pick a (time|slot)/i.test(body);
+          /schedule.{0,20}interview|calendly\.com|book a time|pick a (time|slot)|select.{0,10}(time|slot)|interview.{0,20}(scheduled|confirmed)/i.test(
+            body,
+          );
         if (!hasStrongInterview) {
           continue; // skip this match, let it fall through to confirmation
         }
@@ -690,7 +693,9 @@ try {
       console.log(`    Skipped invalid transition: ${app.status} → ${newStatus}`);
     }
 
-    // Log to communication_log
+    // Log to communication_log (include full email body text)
+    const cleanBody = bodyText.replace(/\s+/g, " ").trim().slice(0, 5000); // cap at 5KB for DB storage
+
     const logEntry = {
       entity_type: "application",
       entity_id: app.id,
@@ -698,6 +703,7 @@ try {
       direction: "inbound",
       subject: subject.slice(0, 255),
       content_summary: `${classification}: ${subject}`.slice(0, 500),
+      full_content: cleanBody || null,
       sentiment:
         classification === "rejection"
           ? "negative"
