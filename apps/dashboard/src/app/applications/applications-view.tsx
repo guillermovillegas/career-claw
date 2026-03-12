@@ -68,7 +68,7 @@ export function ApplicationsView({ applications }: { applications: ApplicationWi
       {/* Header */}
       <div className="flex items-baseline justify-between">
         <h1 className="text-lg font-semibold text-white tracking-tight">Applications</h1>
-        <span className="text-[11px] text-neutral-600 tabular-nums">
+        <span className="text-xs text-neutral-400 tabular-nums">
           {applications.length} total
         </span>
       </div>
@@ -80,14 +80,14 @@ export function ApplicationsView({ applications }: { applications: ApplicationWi
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`px-3 py-1.5 text-[12px] font-medium rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               tab === key
                 ? "bg-white/[0.10] text-white"
-                : "text-neutral-500 hover:text-neutral-300"
+                : "text-neutral-400 hover:text-neutral-300"
             }`}
           >
             {label}
-            <span className={`ml-1.5 tabular-nums ${tab === key ? "text-neutral-300" : "text-neutral-600"}`}>
+            <span className={`ml-1.5 tabular-nums ${tab === key ? "text-neutral-300" : "text-neutral-400"}`}>
               {counts[key]}
             </span>
           </button>
@@ -95,14 +95,14 @@ export function ApplicationsView({ applications }: { applications: ApplicationWi
       </div>
 
       {/* Sort bar */}
-      <div className="flex items-center gap-3 text-[11px] text-neutral-600">
+      <div className="flex items-center gap-3 text-xs text-neutral-400">
         <span className="uppercase tracking-widest">Sort</span>
         {(["score", "company", "date"] as SortKey[]).map((k) => (
           <button
             key={k}
             type="button"
             onClick={() => toggleSort(k)}
-            className={`capitalize ${sortKey === k ? "text-neutral-300" : "text-neutral-600 hover:text-neutral-400"}`}
+            className={`capitalize ${sortKey === k ? "text-neutral-300" : "text-neutral-400 hover:text-neutral-300"}`}
           >
             {k}
             {sortKey === k && (
@@ -132,7 +132,7 @@ function ReadyToApplyList({ apps }: { apps: ApplicationWithJob[] }) {
     <div className="space-y-4">
       {withUrl.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[11px] text-neutral-500 uppercase tracking-widest">
+          <p className="text-xs text-neutral-400 uppercase tracking-widest">
             Ready ({withUrl.length})
           </p>
           <div className="divide-y divide-neutral-800/50">
@@ -144,7 +144,7 @@ function ReadyToApplyList({ apps }: { apps: ApplicationWithJob[] }) {
       )}
       {noUrl.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[11px] text-neutral-600 uppercase tracking-widest">
+          <p className="text-xs text-neutral-400 uppercase tracking-widest">
             Needs Attention ({noUrl.length})
           </p>
           <div className="divide-y divide-neutral-800/30">
@@ -170,22 +170,22 @@ function ReadyRow({ app }: { app: ApplicationWithJob }) {
           <div className="flex items-baseline gap-2">
             <Link
               href={`/applications/${app.id}`}
-              className="text-[13px] font-medium text-neutral-200 hover:text-white transition-colors truncate"
+              className="text-sm font-medium text-neutral-200 hover:text-white transition-colors truncate"
             >
               {app.jobs?.title ?? "Unknown"}
             </Link>
-            <span className="text-[11px] text-neutral-600 shrink-0">{app.jobs?.company}</span>
+            <span className="text-xs text-neutral-400 shrink-0">{app.jobs?.company}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-neutral-600 uppercase">{app.jobs?.platform ?? app.platform}</span>
+            <span className="text-xs text-neutral-400 uppercase">{app.jobs?.platform ?? app.platform}</span>
             {app.jobs?.work_mode && (
-              <span className="text-[10px] text-neutral-600">{app.jobs.work_mode}</span>
+              <span className="text-xs text-neutral-400">{app.jobs.work_mode}</span>
             )}
             {wordCount > 0 && (
               <button
                 type="button"
                 onClick={() => setShowLetter(!showLetter)}
-                className="text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors"
+                className="text-xs text-neutral-400 hover:text-neutral-300 transition-colors"
               >
                 {wordCount}w letter {showLetter ? "\u25B4" : "\u25BE"}
               </button>
@@ -197,7 +197,7 @@ function ReadyRow({ app }: { app: ApplicationWithJob }) {
             href={app.jobs.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 px-3 py-1 rounded-md border border-neutral-700 text-[11px] font-medium text-neutral-300 hover:bg-white/[0.06] hover:text-white hover:border-neutral-600 transition-all"
+            className="shrink-0 px-3 py-1 rounded-md border border-neutral-700 text-xs font-medium text-neutral-300 hover:bg-white/[0.06] hover:text-white hover:border-neutral-600 transition-all"
           >
             Apply
           </a>
@@ -205,7 +205,7 @@ function ReadyRow({ app }: { app: ApplicationWithJob }) {
       </div>
       {showLetter && app.cover_letter && (
         <div className="mt-2 ml-7 rounded-md bg-neutral-900 border border-neutral-800 p-3">
-          <p className="text-[12px] text-neutral-400 leading-relaxed whitespace-pre-wrap">
+          <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-wrap">
             {app.cover_letter}
           </p>
           <button
@@ -213,7 +213,7 @@ function ReadyRow({ app }: { app: ApplicationWithJob }) {
             onClick={() => {
               void navigator.clipboard.writeText(app.cover_letter ?? "");
             }}
-            className="mt-2 text-[10px] text-neutral-600 hover:text-neutral-400 transition-colors"
+            className="mt-2 text-xs text-neutral-400 hover:text-neutral-300 transition-colors"
           >
             Copy to clipboard
           </button>
@@ -229,11 +229,11 @@ function CompactRow({ app }: { app: ApplicationWithJob }) {
       <ScoreBadge score={app.match_score} />
       <Link
         href={`/applications/${app.id}`}
-        className="text-[12px] text-neutral-400 hover:text-neutral-300 transition-colors truncate flex-1"
+        className="text-sm text-neutral-400 hover:text-neutral-300 transition-colors truncate flex-1"
       >
-        {app.jobs?.title ?? "Unknown"} <span className="text-neutral-600">@ {app.jobs?.company}</span>
+        {app.jobs?.title ?? "Unknown"} <span className="text-neutral-400">@ {app.jobs?.company}</span>
       </Link>
-      <span className="text-[10px] text-neutral-700 shrink-0">
+      <span className="text-xs text-neutral-500 shrink-0">
         {!app.cover_letter || app.cover_letter.length <= 50 ? "no letter" : "no link"}
       </span>
     </div>
@@ -247,7 +247,7 @@ function ApplicationList({ apps, showApplyLink }: { apps: ApplicationWithJob[]; 
 
   if (apps.length === 0) {
     return (
-      <p className="text-[13px] text-neutral-600 py-8 text-center">
+      <p className="text-sm text-neutral-400 py-8 text-center">
         No applications in this category.
       </p>
     );
@@ -255,15 +255,15 @@ function ApplicationList({ apps, showApplyLink }: { apps: ApplicationWithJob[]; 
 
   return (
     <div className="rounded-lg border border-neutral-800 overflow-hidden">
-      <table className="w-full text-left text-[13px]">
+      <table className="w-full text-left text-sm">
         <thead className="border-b border-neutral-800 bg-neutral-900/50">
           <tr>
-            <th className="px-3 py-2 text-[10px] font-medium text-neutral-600 uppercase tracking-widest">Status</th>
-            <th className="px-3 py-2 text-[10px] font-medium text-neutral-600 uppercase tracking-widest">Role</th>
-            <th className="px-3 py-2 text-[10px] font-medium text-neutral-600 uppercase tracking-widest">Company</th>
-            <th className="px-3 py-2 text-[10px] font-medium text-neutral-600 uppercase tracking-widest">Platform</th>
-            <th className="px-3 py-2 text-[10px] font-medium text-neutral-600 uppercase tracking-widest">Score</th>
-            <th className="px-3 py-2 text-[10px] font-medium text-neutral-600 uppercase tracking-widest">Date</th>
+            <th className="px-3 py-2 text-xs font-medium text-neutral-400 uppercase tracking-widest">Status</th>
+            <th className="px-3 py-2 text-xs font-medium text-neutral-400 uppercase tracking-widest">Role</th>
+            <th className="px-3 py-2 text-xs font-medium text-neutral-400 uppercase tracking-widest">Company</th>
+            <th className="px-3 py-2 text-xs font-medium text-neutral-400 uppercase tracking-widest">Platform</th>
+            <th className="px-3 py-2 text-xs font-medium text-neutral-400 uppercase tracking-widest">Score</th>
+            <th className="px-3 py-2 text-xs font-medium text-neutral-400 uppercase tracking-widest">Date</th>
             <th className="px-3 py-2 w-8"></th>
           </tr>
         </thead>
@@ -313,9 +313,9 @@ function AppTableRow({
           </Link>
         </td>
         <td className="px-3 py-2.5 text-neutral-400">{app.jobs?.company ?? "--"}</td>
-        <td className="px-3 py-2.5 text-neutral-600 text-[11px] uppercase">{app.jobs?.platform ?? app.platform}</td>
+        <td className="px-3 py-2.5 text-neutral-400 text-xs uppercase">{app.jobs?.platform ?? app.platform}</td>
         <td className="px-3 py-2.5"><ScoreBadge score={app.match_score} /></td>
-        <td className="px-3 py-2.5 text-neutral-600 text-[11px]">
+        <td className="px-3 py-2.5 text-neutral-400 text-xs">
           {formatDate(app.application_date ?? app.created_at)}
         </td>
         <td className="px-3 py-2.5">
@@ -325,7 +325,7 @@ function AppTableRow({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-neutral-600 hover:text-white transition-colors"
+              className="text-neutral-400 hover:text-white transition-colors"
             >
               <ArrowUpRightIcon className="h-3.5 w-3.5" />
             </a>
@@ -335,7 +335,7 @@ function AppTableRow({
       {expanded && (
         <tr className="bg-neutral-900/30">
           <td colSpan={7} className="px-4 py-3">
-            <div className="grid grid-cols-2 gap-3 text-[12px] lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
               <Detail label="Mode" value={app.jobs?.work_mode ?? "--"} />
               <Detail label="Source" value={app.source ?? "--"} />
               <Detail label="Follow-up" value={formatDate(app.next_followup_date)} />
@@ -343,16 +343,16 @@ function AppTableRow({
             </div>
             {app.cover_letter && (
               <div className="mt-3">
-                <p className="text-[10px] text-neutral-600 uppercase tracking-widest mb-1">Cover Letter</p>
-                <p className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md bg-neutral-900 border border-neutral-800 p-3 text-[12px] text-neutral-400 leading-relaxed">
+                <p className="text-xs text-neutral-400 uppercase tracking-widest mb-1">Cover Letter</p>
+                <p className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md bg-neutral-900 border border-neutral-800 p-3 text-sm text-neutral-400 leading-relaxed">
                   {app.cover_letter}
                 </p>
               </div>
             )}
             {app.notes && (
               <div className="mt-2">
-                <p className="text-[10px] text-neutral-600 uppercase tracking-widest mb-1">Notes</p>
-                <p className="text-[12px] text-neutral-500">{app.notes}</p>
+                <p className="text-xs text-neutral-400 uppercase tracking-widest mb-1">Notes</p>
+                <p className="text-sm text-neutral-400">{app.notes}</p>
               </div>
             )}
           </td>
@@ -365,7 +365,7 @@ function AppTableRow({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] text-neutral-600">{label}</p>
+      <p className="text-xs text-neutral-400">{label}</p>
       <p className="mt-0.5 text-neutral-400">{value}</p>
     </div>
   );

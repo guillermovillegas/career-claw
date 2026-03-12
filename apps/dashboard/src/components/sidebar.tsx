@@ -33,10 +33,10 @@ export function Sidebar() {
               key={href}
               href={href}
               title={label}
-              className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] transition-colors ${
+              className={`flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${
                 isActive
                   ? "bg-white/[0.08] text-white font-medium"
-                  : "text-neutral-500 hover:bg-white/[0.04] hover:text-neutral-300"
+                  : "text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-300"
               }`}
             >
               <Icon className="h-4 w-4 shrink-0" />

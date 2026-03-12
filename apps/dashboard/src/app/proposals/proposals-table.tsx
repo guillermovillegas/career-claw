@@ -63,7 +63,7 @@ export function ProposalsTable({ proposals }: ProposalsTableProps) {
             </button>
           ))}
         </div>
-        <span className="ml-auto text-xs text-neutral-500">
+        <span className="ml-auto text-xs text-neutral-400">
           {filtered.length} result{filtered.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -156,7 +156,7 @@ function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
       <td className="px-4 py-3 text-neutral-300">
         {proposal.client_name ?? "--"}
         {proposal.client_country && (
-          <span className="ml-1 text-xs text-neutral-500">
+          <span className="ml-1 text-xs text-neutral-400">
             ({proposal.client_country})
           </span>
         )}
@@ -166,7 +166,7 @@ function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
           ? formatCurrency(Number(proposal.bid_amount))
           : "--"}
         {proposal.budget_type && (
-          <span className="ml-1 text-xs text-neutral-500">
+          <span className="ml-1 text-xs text-neutral-400">
             {proposal.budget_type === "hourly" ? "/hr" : "fixed"}
           </span>
         )}
@@ -174,7 +174,7 @@ function ProposalRow({ proposal }: { proposal: FreelanceProposal }) {
       <td className="px-4 py-3 text-neutral-400">
         {budgetRange}
         {proposal.budget_type && (
-          <span className="ml-1 text-xs text-neutral-500">
+          <span className="ml-1 text-xs text-neutral-400">
             {proposal.budget_type}
           </span>
         )}

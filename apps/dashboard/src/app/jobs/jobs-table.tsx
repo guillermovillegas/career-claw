@@ -127,7 +127,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
       >
         {label}
         {isActive && (
-          <span className="text-[10px]">
+          <span className="text-xs">
             {sortDir === "asc" ? "\u25B2" : "\u25BC"}
           </span>
         )}
@@ -180,7 +180,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
           className={`text-xs px-2 py-1 rounded border transition-colors ${
             hideClosed
               ? "border-neutral-700 bg-neutral-800/80 text-neutral-400 hover:text-neutral-200"
-              : "border-neutral-600/50 bg-neutral-700/20 text-neutral-500"
+              : "border-neutral-600/50 bg-neutral-700/20 text-neutral-400"
           }`}
         >
           {hideClosed ? "Hide closed" : "Show closed"}
@@ -199,7 +199,7 @@ export function JobsTable({ jobs }: JobsTableProps) {
             Clear
           </button>
         )}
-        <span className="ml-auto text-xs text-neutral-500">
+        <span className="ml-auto text-xs text-neutral-400">
           {sortedJobs.length} shown · <span className="text-neutral-300">{newCount} new</span> · {appliedCount} applied
         </span>
       </div>
@@ -265,11 +265,11 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
         >
           {job.title}
         </Link>
-        <p className="text-neutral-500 truncate">{job.company}</p>
+        <p className="text-neutral-400 truncate">{job.company}</p>
       </td>
       <td className="px-3 py-2">
         {job.is_closed ? (
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/50 text-neutral-500 line-through">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-700/50 text-neutral-400 line-through">
             Closed
           </span>
         ) : (
@@ -282,8 +282,8 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
       <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-400">
         {formatSalaryRange(job.salary_min, job.salary_max)}
       </td>
-      <td className="px-3 py-2 text-neutral-500 capitalize">{job.platform}</td>
-      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-500">
+      <td className="px-3 py-2 text-neutral-400 capitalize">{job.platform}</td>
+      <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-400">
         {formatDate(job.created_at)}
       </td>
       <td className="px-3 py-2">
@@ -292,7 +292,7 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-neutral-600 hover:text-white transition-colors"
+            className="text-neutral-400 hover:text-white transition-colors"
             title="Open job posting"
           >
             <ExternalLinkIcon className="h-3.5 w-3.5" />
@@ -310,7 +310,7 @@ function JobRow({ job }: { job: JobWithAppStatus }) {
 function AppStatusBadge({ status }: { status: string | null }) {
   if (!status) {
     return (
-      <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-white/[0.08] text-neutral-300 ring-1 ring-inset ring-neutral-500/20">
+      <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-white/[0.08] text-neutral-300 ring-1 ring-inset ring-neutral-500/20">
         New
       </span>
     );
@@ -323,13 +323,13 @@ function AppStatusBadge({ status }: { status: string | null }) {
     final: "bg-white/[0.08] text-neutral-200",
     offer: "bg-white/[0.08] text-white",
     hired: "bg-white/[0.08] text-white",
-    rejected: "bg-neutral-700/50 text-neutral-500",
-    withdrawn: "bg-neutral-700/50 text-neutral-500",
+    rejected: "bg-neutral-700/50 text-neutral-400",
+    withdrawn: "bg-neutral-700/50 text-neutral-400",
   };
   const label = status.replace(/_/g, " ");
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium capitalize ${
         styles[status] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
@@ -339,15 +339,15 @@ function AppStatusBadge({ status }: { status: string | null }) {
 }
 
 function WorkModeBadge({ mode }: { mode: string | null }) {
-  if (!mode) {return <span className="text-neutral-600">—</span>;}
+  if (!mode) {return <span className="text-neutral-400">—</span>;}
   const styles: Record<string, string> = {
     remote: "bg-white/[0.08] text-neutral-300",
     hybrid: "bg-neutral-700/50 text-neutral-400",
-    "on-site": "bg-neutral-700/50 text-neutral-500",
+    "on-site": "bg-neutral-700/50 text-neutral-400",
   };
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium capitalize ${
         styles[mode] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >

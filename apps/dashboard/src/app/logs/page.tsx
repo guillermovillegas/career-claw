@@ -29,7 +29,7 @@ export default async function LogsPage() {
           <p className="text-xs text-neutral-300 font-mono break-all">
             {fetchError}
           </p>
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-neutral-400">
             Check Supabase RLS policies on automation_logs and
             communication_log tables.
           </p>

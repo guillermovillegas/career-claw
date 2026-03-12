@@ -4,7 +4,7 @@ interface PriorityStarsProps {
 
 export function PriorityStars({ priority }: PriorityStarsProps) {
   if (priority === 0) {
-    return <span className="text-[11px] text-neutral-700">--</span>;
+    return <span className="text-xs text-neutral-500">--</span>;
   }
   return (
     <span className="inline-flex gap-px" title={`Priority ${priority}/5`}>

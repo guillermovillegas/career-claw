@@ -333,7 +333,7 @@ export function LogsClient({
       {/* Header */}
       <div className="flex items-baseline justify-between">
         <h1 className="text-sm font-semibold text-neutral-300">Logs</h1>
-        <span className="text-[10px] text-neutral-600">
+        <span className="text-xs text-neutral-400">
           auto-refreshes on load
         </span>
       </div>
@@ -372,7 +372,7 @@ export function LogsClient({
               placeholder="Platform..."
               value={platformFilter}
               onChange={(e) => setPlatformFilter(e.target.value)}
-              className="rounded border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-xs text-neutral-300 placeholder:text-neutral-600 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 w-28"
+              className="rounded border border-neutral-700 bg-neutral-800/80 px-2 py-1 text-xs text-neutral-300 placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400 w-28"
             />
             <ToggleGroup
               value={successFilter}
@@ -444,7 +444,7 @@ export function LogsClient({
           </button>
         )}
 
-        <span className="ml-auto text-xs text-neutral-500 tabular-nums">
+        <span className="ml-auto text-xs text-neutral-400 tabular-nums">
           {activeTab === "automation" ? (
             <>
               {filteredAutomation.length} shown
@@ -452,7 +452,7 @@ export function LogsClient({
                 {automationSuccessCount} ok
               </span>
               {automationFailCount > 0 && (
-                <span className="text-neutral-500 ml-1">
+                <span className="text-neutral-400 ml-1">
                   {automationFailCount} fail
                 </span>
               )}
@@ -495,8 +495,8 @@ function AutomationTable({
   if (groups.length === 0) {
     return (
       <div className="rounded-lg border border-neutral-700/50 bg-neutral-900 px-4 py-8 text-center">
-        <p className="text-sm text-neutral-500">No automation runs match your filters.</p>
-        <p className="mt-1 text-xs text-neutral-600">
+        <p className="text-sm text-neutral-400">No automation runs match your filters.</p>
+        <p className="mt-1 text-xs text-neutral-400">
           Logs appear here after daily-search.sh or weekly-proposals.sh runs.
         </p>
       </div>
@@ -508,10 +508,10 @@ function AutomationTable({
       {groups.map((group) => (
         <div key={group.key}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               {group.label}
             </span>
-            <span className="text-[10px] text-neutral-700">
+            <span className="text-xs text-neutral-500">
               {group.logs.length} entries
             </span>
             <div className="flex-1 border-b border-neutral-800" />
@@ -578,10 +578,10 @@ function AutomationRow({
 
   const metricAccentMap: Record<string, string> = {
     white: "text-white",
-    dark: "text-neutral-500",
+    dark: "text-neutral-400",
     mid: "text-neutral-400",
     light: "text-neutral-300",
-    muted: "text-neutral-500",
+    muted: "text-neutral-400",
   };
 
   return (
@@ -594,19 +594,19 @@ function AutomationRow({
         }`}
         onClick={onToggle}
       >
-        <td className="px-2 py-2 text-neutral-600">
+        <td className="px-2 py-2 text-neutral-400">
           {hasDetails && (
             <ChevronIcon expanded={expanded} />
           )}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-500">
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-400">
           {formatRelativeTime(log.created_at)}
         </td>
         <td className="whitespace-nowrap px-3 py-2">
           <ActionBadge action={log.action_type} />
         </td>
-        <td className="whitespace-nowrap px-3 py-2 text-neutral-500">
-          {log.platform ?? <span className="text-neutral-700">--</span>}
+        <td className="whitespace-nowrap px-3 py-2 text-neutral-400">
+          {log.platform ?? <span className="text-neutral-500">--</span>}
         </td>
         <td className="px-3 py-2">
           <span
@@ -618,14 +618,14 @@ function AutomationRow({
         </td>
         <td className="max-w-sm px-3 py-2">
           {log.error_message ? (
-            <span className="truncate text-neutral-500 block">
+            <span className="truncate text-neutral-400 block">
               {log.error_message}
             </span>
           ) : metrics.length > 0 ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
               {metrics.map((m) => (
                 <span key={m.label} className="whitespace-nowrap">
-                  <span className="text-neutral-600">{m.label}: </span>
+                  <span className="text-neutral-400">{m.label}: </span>
                   <span
                     className={
                       m.accent ? metricAccentMap[m.accent] : "text-neutral-400"
@@ -637,10 +637,10 @@ function AutomationRow({
               ))}
             </div>
           ) : (
-            <span className="text-neutral-700">--</span>
+            <span className="text-neutral-500">--</span>
           )}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-right text-neutral-600">
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-right text-neutral-400">
           {log.execution_time_ms != null
             ? log.execution_time_ms.toLocaleString()
             : "--"}
@@ -665,20 +665,20 @@ function ExpandedDetails({ log }: { log: AutomationLog }) {
       {/* Metadata row */}
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
         <div>
-          <span className="text-neutral-600">ID: </span>
-          <span className="font-mono text-neutral-500 text-[10px]">
+          <span className="text-neutral-400">ID: </span>
+          <span className="font-mono text-neutral-400 text-xs">
             {log.id}
           </span>
         </div>
         <div>
-          <span className="text-neutral-600">Timestamp: </span>
+          <span className="text-neutral-400">Timestamp: </span>
           <span className="text-neutral-400">
             {formatDateTime(log.created_at)}
           </span>
         </div>
         {log.execution_time_ms != null && (
           <div>
-            <span className="text-neutral-600">Execution: </span>
+            <span className="text-neutral-400">Execution: </span>
             <span className="text-neutral-400 tabular-nums">
               {log.execution_time_ms.toLocaleString()}ms
             </span>
@@ -689,10 +689,10 @@ function ExpandedDetails({ log }: { log: AutomationLog }) {
       {/* Error message */}
       {log.error_message && (
         <div className="rounded border border-neutral-700/30 bg-neutral-900/10 px-3 py-2">
-          <span className="text-[10px] font-semibold uppercase text-neutral-500">
+          <span className="text-xs font-semibold uppercase text-neutral-400">
             Error
           </span>
-          <p className="text-xs text-neutral-500 mt-0.5 break-all">
+          <p className="text-xs text-neutral-400 mt-0.5 break-all">
             {log.error_message}
           </p>
         </div>
@@ -701,10 +701,10 @@ function ExpandedDetails({ log }: { log: AutomationLog }) {
       {/* JSON details */}
       {log.details != null && (
         <div>
-          <span className="text-[10px] font-semibold uppercase text-neutral-600 block mb-1">
+          <span className="text-xs font-semibold uppercase text-neutral-400 block mb-1">
             Full Details
           </span>
-          <pre className="rounded bg-neutral-950 border border-neutral-800 px-3 py-2 text-[11px] text-neutral-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed">
+          <pre className="rounded bg-neutral-950 border border-neutral-800 px-3 py-2 text-xs text-neutral-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed">
             {formatJsonDetails(log.details)}
           </pre>
         </div>
@@ -727,10 +727,10 @@ function CommunicationTable({
   if (groups.length === 0) {
     return (
       <div className="rounded-lg border border-neutral-700/50 bg-neutral-900 px-4 py-8 text-center">
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-400">
           No communication logs match your filters.
         </p>
-        <p className="mt-1 text-xs text-neutral-600">
+        <p className="mt-1 text-xs text-neutral-400">
           Logs appear here when emails or messages are tracked.
         </p>
       </div>
@@ -742,10 +742,10 @@ function CommunicationTable({
       {groups.map((group) => (
         <div key={group.key}>
           <div className="mb-1.5 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               {group.label}
             </span>
-            <span className="text-[10px] text-neutral-700">
+            <span className="text-xs text-neutral-500">
               {group.logs.length} entries
             </span>
             <div className="flex-1 border-b border-neutral-800" />
@@ -818,10 +818,10 @@ function CommRow({
         }`}
         onClick={onToggle}
       >
-        <td className="px-2 py-2 text-neutral-600">
+        <td className="px-2 py-2 text-neutral-400">
           {hasDetails && <ChevronIcon expanded={expanded} />}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-500">
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-neutral-400">
           {formatRelativeTime(log.created_at)}
         </td>
         <td className="px-3 py-2">
@@ -831,11 +831,11 @@ function CommRow({
           <ChannelBadge channel={log.channel} />
         </td>
         <td className="px-3 py-2">
-          <span className="text-neutral-500 capitalize">
+          <span className="text-neutral-400 capitalize">
             {log.entity_type}
           </span>
           <span
-            className="ml-1.5 font-mono text-[10px] text-neutral-600"
+            className="ml-1.5 font-mono text-xs text-neutral-400"
             title={log.entity_id}
           >
             {log.entity_id.slice(0, 8)}
@@ -847,7 +847,7 @@ function CommRow({
               {log.subject}
             </span>
           ) : (
-            <span className="text-neutral-700">--</span>
+            <span className="text-neutral-500">--</span>
           )}
         </td>
         <td className="px-3 py-2">
@@ -872,23 +872,23 @@ function CommExpandedDetails({ log }: { log: CommunicationLog }) {
     <div className="border-t border-neutral-700/30 px-6 py-3 space-y-2">
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
         <div>
-          <span className="text-neutral-600">ID: </span>
-          <span className="font-mono text-neutral-500 text-[10px]">
+          <span className="text-neutral-400">ID: </span>
+          <span className="font-mono text-neutral-400 text-xs">
             {log.id}
           </span>
         </div>
         <div>
-          <span className="text-neutral-600">Timestamp: </span>
+          <span className="text-neutral-400">Timestamp: </span>
           <span className="text-neutral-400">
             {formatDateTime(log.created_at)}
           </span>
         </div>
         <div>
-          <span className="text-neutral-600">Entity: </span>
+          <span className="text-neutral-400">Entity: </span>
           <span className="text-neutral-400 capitalize">
             {log.entity_type}
           </span>
-          <span className="ml-1 font-mono text-neutral-500 text-[10px]">
+          <span className="ml-1 font-mono text-neutral-400 text-xs">
             {log.entity_id}
           </span>
         </div>
@@ -896,7 +896,7 @@ function CommExpandedDetails({ log }: { log: CommunicationLog }) {
 
       {log.content_summary && (
         <div>
-          <span className="text-[10px] font-semibold uppercase text-neutral-600 block mb-1">
+          <span className="text-xs font-semibold uppercase text-neutral-400 block mb-1">
             Summary
           </span>
           <p className="text-xs text-neutral-300 leading-relaxed">
@@ -907,10 +907,10 @@ function CommExpandedDetails({ log }: { log: CommunicationLog }) {
 
       {log.full_content && (
         <div>
-          <span className="text-[10px] font-semibold uppercase text-neutral-600 block mb-1">
+          <span className="text-xs font-semibold uppercase text-neutral-400 block mb-1">
             Full Content
           </span>
-          <pre className="rounded bg-neutral-950 border border-neutral-800 px-3 py-2 text-[11px] text-neutral-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed whitespace-pre-wrap">
+          <pre className="rounded bg-neutral-950 border border-neutral-800 px-3 py-2 text-xs text-neutral-400 overflow-x-auto max-h-64 overflow-y-auto font-mono leading-relaxed whitespace-pre-wrap">
             {log.full_content}
           </pre>
         </div>
@@ -939,13 +939,13 @@ function TabButton({
       className={`relative pb-2 text-xs font-medium transition-colors ${
         active
           ? "text-white"
-          : "text-neutral-500 hover:text-neutral-300"
+          : "text-neutral-400 hover:text-neutral-300"
       }`}
     >
       {label}
       <span
         className={`ml-1.5 tabular-nums ${
-          active ? "text-white/70" : "text-neutral-600"
+          active ? "text-white/70" : "text-neutral-400"
         }`}
       >
         {count}
@@ -1005,7 +1005,7 @@ function ToggleGroup({
           className={`px-2 py-1 text-xs transition-colors ${
             value === opt.value
               ? "bg-neutral-700 text-neutral-200"
-              : "bg-neutral-800/80 text-neutral-500 hover:text-neutral-300"
+              : "bg-neutral-800/80 text-neutral-400 hover:text-neutral-300"
           }`}
         >
           {opt.label}
@@ -1028,7 +1028,7 @@ function ActionBadge({ action }: { action: string }) {
 
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
         styles[action] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
@@ -1042,14 +1042,14 @@ function DirectionBadge({ direction }: { direction: "outbound" | "inbound" }) {
     return (
       <span className="inline-flex items-center gap-1 text-neutral-300" title="Inbound">
         <ArrowDownIcon className="h-3 w-3" />
-        <span className="text-[10px] font-medium">In</span>
+        <span className="text-xs font-medium">In</span>
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-white" title="Outbound">
       <ArrowUpIcon className="h-3 w-3" />
-      <span className="text-[10px] font-medium">Out</span>
+      <span className="text-xs font-medium">Out</span>
     </span>
   );
 }
@@ -1067,7 +1067,7 @@ function ChannelBadge({ channel }: { channel: string }) {
 
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
         styles[channel] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
@@ -1081,7 +1081,7 @@ function SentimentBadge({
 }: {
   sentiment: "positive" | "neutral" | "negative" | null;
 }) {
-  if (!sentiment) {return <span className="text-neutral-700">--</span>;}
+  if (!sentiment) {return <span className="text-neutral-500">--</span>;}
 
   const map: Record<string, { style: string; label: string }> = {
     positive: {
@@ -1093,7 +1093,7 @@ function SentimentBadge({
       label: "Neutral",
     },
     negative: {
-      style: "bg-neutral-500/15 text-neutral-500",
+      style: "bg-neutral-500/15 text-neutral-400",
       label: "Negative",
     },
   };
@@ -1102,7 +1102,7 @@ function SentimentBadge({
 
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${style}`}
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${style}`}
     >
       {label}
     </span>

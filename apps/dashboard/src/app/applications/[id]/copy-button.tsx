@@ -33,10 +33,10 @@ export function CopyButton({ text }: CopyButtonProps) {
     <button
       type="button"
       onClick={handleCopy}
-      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
+      className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium transition-colors ${
         copied
           ? "bg-white/[0.10] text-white"
-          : "bg-white/[0.06] text-neutral-500 hover:bg-white/[0.10] hover:text-neutral-300"
+          : "bg-white/[0.06] text-neutral-400 hover:bg-white/[0.10] hover:text-neutral-300"
       }`}
       title={copied ? "Copied!" : "Copy cover letter to clipboard"}
     >

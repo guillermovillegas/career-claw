@@ -27,7 +27,7 @@ export default async function ProposalsPage({
         <h1 className="text-sm font-semibold text-neutral-300">
           Freelance Proposals
         </h1>
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-neutral-400">
           {proposals.length} proposals · {jobLeads.length} leads
         </span>
       </div>
@@ -44,10 +44,10 @@ export default async function ProposalsPage({
             <table className="w-full text-left text-xs">
               <thead className="border-b border-neutral-700/50 bg-neutral-900/60">
                 <tr>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Score</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Project</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Platform</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-500">Found</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Score</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Project</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Platform</th>
+                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Found</th>
                   <th className="px-3 py-2 w-6" />
                 </tr>
               </thead>
@@ -76,18 +76,18 @@ function JobLeadRow({ job }: { job: Job }) {
       <td className="px-3 py-2 max-w-xs">
         <p className="font-medium text-neutral-200 truncate">{job.title}</p>
         {job.company && (
-          <p className="text-neutral-500 truncate">{job.company}</p>
+          <p className="text-neutral-400 truncate">{job.company}</p>
         )}
       </td>
-      <td className="px-3 py-2 capitalize text-neutral-500">{job.platform}</td>
-      <td className="px-3 py-2 tabular-nums text-neutral-500">{formatDate(job.created_at)}</td>
+      <td className="px-3 py-2 capitalize text-neutral-400">{job.platform}</td>
+      <td className="px-3 py-2 tabular-nums text-neutral-400">{formatDate(job.created_at)}</td>
       <td className="px-3 py-2">
         {job.url ? (
           <a
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-neutral-600 hover:text-white transition-colors"
+            className="text-neutral-400 hover:text-white transition-colors"
             title="Open project"
           >
             <ExternalLinkIcon className="h-3.5 w-3.5" />

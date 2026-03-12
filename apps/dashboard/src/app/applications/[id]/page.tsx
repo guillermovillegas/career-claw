@@ -105,7 +105,7 @@ function SectionCard({
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-950 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-neutral-800 bg-neutral-900/50">
-        <h2 className="text-[10px] font-medium uppercase tracking-widest text-neutral-500">
+        <h2 className="text-xs font-medium uppercase tracking-widest text-neutral-400">
           {title}
         </h2>
       </div>
@@ -129,18 +129,18 @@ function ApplicationHeader({
       <div className="flex items-center gap-1.5 text-xs">
         <Link
           href="/jobs"
-          className="text-neutral-500 hover:text-neutral-300 transition-colors"
+          className="text-neutral-400 hover:text-neutral-300 transition-colors"
         >
           Jobs
         </Link>
-        <span className="text-neutral-700">/</span>
+        <span className="text-neutral-500">/</span>
         <Link
           href="/applications"
-          className="text-neutral-500 hover:text-neutral-300 transition-colors"
+          className="text-neutral-400 hover:text-neutral-300 transition-colors"
         >
           Applications
         </Link>
-        <span className="text-neutral-700">/</span>
+        <span className="text-neutral-500">/</span>
         <span className="text-neutral-400">{job?.company ?? "Unknown"}</span>
       </div>
 
@@ -163,7 +163,7 @@ function ApplicationHeader({
               href={job.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-neutral-500 hover:text-emerald-400 transition-colors"
+              className="text-neutral-400 hover:text-emerald-400 transition-colors"
               title="Open job posting"
             >
               <ExternalLinkIcon className="h-4 w-4" />
@@ -227,7 +227,7 @@ function StatusPipeline({ currentStatus }: { currentStatus: string }) {
         } else if (isPassed) {
           className += passedColors[stage.color];
         } else {
-          className += "bg-neutral-800/60 text-neutral-600";
+          className += "bg-neutral-800/60 text-neutral-400";
         }
 
         return (
@@ -370,13 +370,13 @@ function ApplicationFormFields({
         {/* Standard fields by category */}
         {Array.from(categories.entries()).map(([category, categoryFields]) => (
           <div key={category}>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
               {category}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
               {categoryFields.map((f) => (
-                <div key={f.label} className="flex justify-between gap-2 text-xs py-0.5">
-                  <span className="text-neutral-500 shrink-0">{f.label}</span>
+                <div key={f.label} className="flex justify-between gap-2 text-sm py-0.5">
+                  <span className="text-neutral-400 shrink-0">{f.label}</span>
                   <span className="text-neutral-300 text-right truncate">{f.value}</span>
                 </div>
               ))}
@@ -387,7 +387,7 @@ function ApplicationFormFields({
         {/* Form Q&A from automation logs */}
         {formQA.length > 0 && (
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
               Custom Questions
             </h3>
             <div className="space-y-2">
@@ -396,10 +396,10 @@ function ApplicationFormFields({
                   key={idx}
                   className="rounded-lg bg-neutral-900/60 p-2.5"
                 >
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-sm text-neutral-400">
                     Q: {qa.question}
                   </p>
-                  <p className="text-xs text-neutral-300 mt-0.5">
+                  <p className="text-sm text-neutral-300 mt-0.5">
                     A: {qa.answer || "(empty)"}
                   </p>
                 </div>
@@ -473,21 +473,21 @@ function NotesAndLearningsCard({
       <div className="space-y-4">
         {/* Submission Method */}
         <div>
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
             Submission
           </h3>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
             <div className="flex justify-between gap-2">
-              <span className="text-neutral-500">Method</span>
+              <span className="text-neutral-400">Method</span>
               <span className="text-neutral-300">{submissionMethod}</span>
             </div>
             <div className="flex justify-between gap-2">
-              <span className="text-neutral-500">ATS</span>
+              <span className="text-neutral-400">ATS</span>
               <span className="text-neutral-300">{ats}</span>
             </div>
             {failedLogs.length > 0 && (
               <div className="flex justify-between gap-2 col-span-2">
-                <span className="text-neutral-500">Failed Attempts</span>
+                <span className="text-neutral-400">Failed Attempts</span>
                 <span className="text-rose-400">{failedLogs.length}</span>
               </div>
             )}
@@ -497,14 +497,14 @@ function NotesAndLearningsCard({
         {/* Notes */}
         {noteEntries.length > 0 && (
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
               Notes
             </h3>
             <ul className="space-y-1.5">
               {noteEntries.map((note, i) => (
                 <li
                   key={i}
-                  className="text-xs text-neutral-400 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:h-1 before:w-1 before:rounded-full before:bg-neutral-600"
+                  className="text-sm text-neutral-400 pl-3 relative before:content-[''] before:absolute before:left-0 before:top-1.5 before:h-1 before:w-1 before:rounded-full before:bg-neutral-600"
                 >
                   {note}
                 </li>
@@ -516,7 +516,7 @@ function NotesAndLearningsCard({
         {/* Failure details */}
         {failedLogs.length > 0 && (
           <div>
-            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
               Failure Logs
             </h3>
             <div className="space-y-1.5">
@@ -525,10 +525,10 @@ function NotesAndLearningsCard({
                   key={log.id}
                   className="rounded-lg bg-rose-500/5 border border-rose-500/20 p-2.5"
                 >
-                  <p className="text-xs text-rose-400">
+                  <p className="text-sm text-rose-400">
                     {log.error_message ?? "Unknown error"}
                   </p>
-                  <p className="text-[10px] text-neutral-600 mt-0.5">
+                  <p className="text-xs text-neutral-400 mt-0.5">
                     {formatDateTime(log.created_at)}
                     {log.execution_time_ms != null && ` -- ${log.execution_time_ms}ms`}
                   </p>
@@ -540,10 +540,10 @@ function NotesAndLearningsCard({
 
         {/* Bot Improvement Ideas */}
         <div className="border-t border-neutral-700/50 pt-3">
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600 mb-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
             Automation Methods & Improvements
           </h3>
-          <div className="space-y-2 text-xs text-neutral-500">
+          <div className="space-y-2 text-sm text-neutral-400">
             <div className="flex items-start gap-2">
               <MethodBadge label="Current" color="emerald" />
               <span>
@@ -595,7 +595,7 @@ function MethodBadge({ label, color }: { label: string; color: string }) {
   };
   return (
     <span
-      className={`shrink-0 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
+      className={`shrink-0 inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
         styles[color] ?? "bg-neutral-700/60 text-neutral-400"
       }`}
     >
@@ -651,10 +651,10 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       sortTime: new Date(app.created_at).getTime() + 1,
       children: (
         <div>
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/15 text-blue-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-blue-500/15 text-blue-400">
             {app.cover_letter.length.toLocaleString()} chars
           </span>
-          <p className="mt-1 text-xs text-neutral-500 line-clamp-2">
+          <p className="mt-1 text-sm text-neutral-400 line-clamp-2">
             {preview}{preview.length < app.cover_letter.length ? "..." : ""}
           </p>
         </div>
@@ -675,7 +675,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       time: formatDate(app.application_date),
       sortTime: new Date(app.application_date).getTime(),
       children: (
-        <p className="text-xs text-neutral-500">Formal submission date</p>
+        <p className="text-sm text-neutral-400">Formal submission date</p>
       ),
     });
   }
@@ -715,12 +715,12 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       children: (
         <div>
           {log.subject && (
-            <p className="text-xs font-medium text-neutral-300">{log.subject}</p>
+            <p className="text-sm font-medium text-neutral-300">{log.subject}</p>
           )}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {log.sentiment && <SentimentBadge sentiment={log.sentiment} />}
             {log.content_summary && (
-              <p className="text-xs text-neutral-500 line-clamp-1">
+              <p className="text-sm text-neutral-400 line-clamp-1">
                 {log.content_summary}
               </p>
             )}
@@ -739,7 +739,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       time: formatDateTime(log.created_at),
       sortTime: new Date(log.created_at).getTime(),
       children: (
-        <p className="text-xs text-neutral-500">
+        <p className="text-sm text-neutral-400">
           {log.platform ? `${log.platform} -- ` : ""}
           {log.success ? "Success" : "Failed"}
           {log.error_message ? ` -- ${log.error_message}` : ""}
@@ -768,7 +768,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
         </TimelineEvent>
       ))}
       {entries.length === 0 && (
-        <p className="text-xs text-neutral-600">No timeline events yet.</p>
+        <p className="text-sm text-neutral-400">No timeline events yet.</p>
       )}
     </ol>
   );
@@ -788,17 +788,17 @@ function CoverLetterCard({ coverLetter }: { coverLetter: string }) {
   return (
     <div className="rounded-xl border border-neutral-700/50 bg-neutral-800/40 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-neutral-700/50 bg-neutral-800/60 flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400">
           Cover Letter
         </h2>
         <div className="flex items-center gap-2">
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/60 text-neutral-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-700/60 text-neutral-400">
             {charCount.toLocaleString()} chars
           </span>
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/60 text-neutral-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-700/60 text-neutral-400">
             {wordCount.toLocaleString()} words
           </span>
-          <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-700/60 text-neutral-400">
+          <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-700/60 text-neutral-400">
             {paragraphCount} para{paragraphCount !== 1 ? "s" : ""}
           </span>
           <CopyButton text={coverLetter} />
@@ -838,7 +838,7 @@ function CompanyInfoSidebar({
         </DetailRow>
         <DetailRow label="Job Type" hide={!job?.job_type}>
           {job?.job_type && (
-            <span className="inline-flex rounded-full bg-neutral-700/60 px-2.5 py-0.5 text-xs font-medium capitalize text-neutral-300">
+            <span className="inline-flex rounded-full bg-neutral-700/60 px-2.5 py-0.5 text-sm font-medium capitalize text-neutral-300">
               {job.job_type}
             </span>
           )}
@@ -851,7 +851,7 @@ function CompanyInfoSidebar({
                 href={job.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-500 hover:text-emerald-400 transition-colors"
+                className="text-neutral-400 hover:text-emerald-400 transition-colors"
                 title="Open posting"
               >
                 <ExternalLinkIcon className="h-3 w-3" />
@@ -862,10 +862,10 @@ function CompanyInfoSidebar({
         <DetailRow label="Location" value={job?.location ?? null} hide={!job?.location} />
         <DetailRow label="Posted" value={formatDate(job?.posting_date)} hide={!job?.posting_date} />
         <DetailRow label="Deadline" hide={!job?.deadline}>
-          <span className={`text-xs ${isDeadlinePast ? "text-rose-400" : "text-neutral-300"}`}>
+          <span className={`text-sm ${isDeadlinePast ? "text-rose-400" : "text-neutral-300"}`}>
             {formatDate(job?.deadline)}
             {isDeadlinePast && (
-              <span className="ml-1.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-rose-500/15 text-rose-400">
+              <span className="ml-1.5 inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-rose-500/15 text-rose-400">
                 expired
               </span>
             )}
@@ -931,10 +931,10 @@ function DescriptionSnippet({ text }: { text: string }) {
 
   return (
     <div className="space-y-1 border-t border-neutral-700/50 pt-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-600">
+      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
         Description
       </p>
-      <p className="text-xs text-neutral-400 leading-relaxed whitespace-pre-wrap break-words">
+      <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-wrap break-words">
         {snippet}
         {isTruncated ? "..." : ""}
       </p>
@@ -955,19 +955,19 @@ function CommunicationLogTable({ logs }: { logs: CommunicationLog[] }) {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <DirectionBadge direction={log.direction} />
-              <span className="text-[10px] text-neutral-500 capitalize">
+              <span className="text-xs text-neutral-400 capitalize">
                 {log.channel.replace(/_/g, " ")}
               </span>
             </div>
-            <span className="text-[10px] text-neutral-600 tabular-nums">
+            <span className="text-xs text-neutral-400 tabular-nums">
               {formatDate(log.created_at)}
             </span>
           </div>
           {log.subject && (
-            <p className="text-xs text-neutral-300 truncate">{log.subject}</p>
+            <p className="text-sm text-neutral-300 truncate">{log.subject}</p>
           )}
           {log.content_summary && (
-            <p className="text-xs text-neutral-500 line-clamp-2">
+            <p className="text-sm text-neutral-400 line-clamp-2">
               {log.content_summary}
             </p>
           )}
@@ -1022,9 +1022,9 @@ function TimelineEvent({
       {/* Content */}
       <div className={`pb-4 min-w-0 flex-1 ${isLast ? "pb-0" : ""}`}>
         <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-xs font-medium text-neutral-300">{title}</span>
+          <span className="text-sm font-medium text-neutral-300">{title}</span>
           {time && (
-            <span className="tabular-nums text-xs text-neutral-500">{time}</span>
+            <span className="tabular-nums text-xs text-neutral-400">{time}</span>
           )}
         </div>
         {children && <div className="mt-0.5">{children}</div>}
@@ -1037,7 +1037,7 @@ function TimelineEvent({
 
 function PlatformBadge({ platform }: { platform: string }) {
   return (
-    <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize bg-neutral-700/60 text-neutral-400">
+    <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium capitalize bg-neutral-700/60 text-neutral-400">
       {platform}
     </span>
   );
@@ -1051,7 +1051,7 @@ function WorkModeBadge({ mode }: { mode: string }) {
   };
   return (
     <span
-      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${
+      className={`inline-flex rounded-full border px-2.5 py-0.5 text-sm font-medium capitalize ${
         styles[mode] ?? "bg-neutral-700 text-neutral-300 border-neutral-600"
       }`}
     >
@@ -1068,7 +1068,7 @@ function SentimentBadge({ sentiment }: { sentiment: string }) {
   };
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium capitalize ${
         styles[sentiment] ?? "bg-neutral-700/60 text-neutral-400"
       }`}
     >
@@ -1081,7 +1081,7 @@ function DirectionBadge({ direction }: { direction: string }) {
   const isOutbound = direction === "outbound";
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium ${
         isOutbound
           ? "bg-blue-500/15 text-blue-400"
           : "bg-amber-500/15 text-amber-400"
@@ -1099,13 +1099,13 @@ function FollowupDate({ date, status }: { date: string; status: string }) {
 
   return (
     <span
-      className={`text-xs ${
+      className={`text-sm ${
         isOverdue ? "font-semibold text-rose-400" : "text-neutral-300"
       }`}
     >
       {formatDate(date)}
       {isOverdue && (
-        <span className="ml-1.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium bg-rose-500/15 text-rose-400">
+        <span className="ml-1.5 inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-rose-500/15 text-rose-400">
           overdue
         </span>
       )}
@@ -1128,8 +1128,8 @@ function DetailRow({
     return null;
   }
   return (
-    <div className="flex justify-between gap-2 text-xs">
-      <dt className="text-neutral-500 shrink-0">{label}</dt>
+    <div className="flex justify-between gap-2 text-sm">
+      <dt className="text-neutral-400 shrink-0">{label}</dt>
       <dd className="text-neutral-300 text-right">
         {children ?? value ?? "--"}
       </dd>

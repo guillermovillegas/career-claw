@@ -18,7 +18,7 @@ export function Pipeline({ data }: PipelineProps) {
 
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
-      <h2 className="text-[11px] font-medium text-neutral-500 uppercase tracking-widest mb-4">
+      <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-widest mb-4">
         Pipeline
       </h2>
       <div className="flex items-end gap-2">
@@ -37,7 +37,7 @@ export function Pipeline({ data }: PipelineProps) {
                   backgroundColor: `rgba(255, 255, 255, ${intensity})`,
                 }}
               />
-              <span className="text-[10px] text-neutral-500 text-center leading-tight">
+              <span className="text-xs text-neutral-400 text-center leading-tight">
                 {STAGE_LABELS[stage]}
               </span>
             </div>

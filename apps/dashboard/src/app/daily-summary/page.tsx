@@ -99,7 +99,7 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
           </span>
         </div>
         {submitted.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-neutral-500">
+          <p className="px-4 py-6 text-sm text-neutral-400">
             No applications submitted on this date.
           </p>
         ) : (
@@ -158,13 +158,13 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
                           href={app.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-neutral-500 transition-colors hover:text-white"
+                          className="text-neutral-400 transition-colors hover:text-white"
                           title="Open job posting"
                         >
                           <ExternalLinkIcon className="h-4 w-4" />
                         </a>
                       ) : (
-                        <span className="text-neutral-600">--</span>
+                        <span className="text-neutral-400">--</span>
                       )}
                     </td>
                   </tr>
@@ -183,7 +183,7 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
               Form Q&A Audit
             </span>
             {formQA.length > 0 && (
-              <span className="text-xs text-neutral-500">
+              <span className="text-xs text-neutral-400">
                 {formQA.length} compan{formQA.length !== 1 ? "ies" : "y"}
               </span>
             )}
@@ -197,12 +197,12 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
       {/* Failed Submissions */}
       <section className="rounded-lg border border-neutral-500/20 bg-neutral-500/5">
         <div className="border-b border-neutral-500/15 px-4 py-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Failed Submissions ({failures.length})
           </span>
         </div>
         {failures.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-neutral-500">
+          <p className="px-4 py-6 text-sm text-neutral-400">
             No failed submissions on this date.
           </p>
         ) : (
@@ -212,7 +212,7 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
                 key={fail.id}
                 className="flex items-start gap-3 px-4 py-3"
               >
-                <XCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-500" />
+                <XCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-medium text-neutral-200">
@@ -220,7 +220,7 @@ export default async function DailySummaryPage({ searchParams }: PageProps) {
                     </span>
                     <span className="text-xs text-neutral-400">{fail.title}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-neutral-500">
+                  <p className="mt-0.5 text-xs text-neutral-400">
                     {fail.failureReason}
                   </p>
                 </div>
@@ -266,8 +266,8 @@ function StatCard({
     rose: {
       border: "border-neutral-500/20",
       bg: "bg-neutral-500/5",
-      icon: "text-neutral-500",
-      value: "text-neutral-500",
+      icon: "text-neutral-400",
+      value: "text-neutral-400",
     },
     blue: {
       border: "border-neutral-400/20",
@@ -297,7 +297,7 @@ function StatCard({
           {value}
         </span>
       </div>
-      <p className="mt-1 text-xs text-neutral-500">{label}</p>
+      <p className="mt-1 text-xs text-neutral-400">{label}</p>
     </div>
   );
 }
@@ -311,12 +311,12 @@ function PlatformPill({ platform }: { platform: string }) {
     greenhouse: "bg-neutral-700/30 text-neutral-300",
     lever: "bg-neutral-700/30 text-neutral-300",
     direct: "bg-neutral-700/30 text-neutral-400",
-    referral: "bg-neutral-700/30 text-neutral-500",
+    referral: "bg-neutral-700/30 text-neutral-400",
   };
 
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+      className={`inline-flex rounded px-1.5 py-0.5 text-xs font-medium capitalize ${
         styles[platform] ?? "bg-neutral-700/50 text-neutral-400"
       }`}
     >
