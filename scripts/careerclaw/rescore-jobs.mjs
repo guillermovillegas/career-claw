@@ -26,6 +26,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 // ── Scoring logic ──────────────────────────────────────────────────────────
+// v2: Data-driven scoring based on 600-app conversion analysis (2026-03-12).
+// Conf rates measured: Head 27%, Director 21%, VP 20%, Solutions 11%,
+// Staff/Principal 11%, TPM 11%, FDE 7%, Senior PM 9%, Generic PM 0.9%.
 
 // Salary estimates by seniority level (annual, USD)
 const SALARY_BY_SENIORITY = {
@@ -41,91 +44,136 @@ const SALARY_BY_SENIORITY = {
   default: [110000, 155000],
 };
 
+// Companies with 2+ confirmations from our data — proven receptive
+const PROVEN_COMPANIES = [
+  "cresta",
+  "webflow",
+  "gitlab",
+  "anthropic",
+  "addepar",
+  "glean",
+  "you.com",
+];
+
 function scoreJob(job) {
   const t = (job.title || "").toLowerCase();
   const c = (job.company || "").toLowerCase();
+  const desc = (job.description || "").toLowerCase();
   const combined = `${t} ${c}`;
 
-  // Skills match (0-40)
-  let skills = 10; // baseline
-  const skillKeys = [
-    "ai",
-    "ml ",
-    "machine learning",
-    "typescript",
-    "next.js",
-    "nextjs",
-    "react",
-    "supabase",
-    "python",
-    "llm",
-    "computer vision",
-    "product manager",
-    "forward deployed",
-    "solutions engineer",
-    "full stack",
-    "full-stack",
-  ];
-  for (const kw of skillKeys) {
-    if (combined.includes(kw)) {
-      if (["ai", "machine learning", "llm", "computer vision"].includes(kw)) {
-        skills += 8;
-      } else if (["typescript", "next.js", "nextjs", "react"].includes(kw)) {
-        skills += 6;
-      } else if (["forward deployed", "solutions engineer"].includes(kw)) {
-        skills += 8;
-      } else {
-        skills += 4;
-      }
-    }
-  }
-  skills = Math.min(40, skills);
+  // Base score — all jobs in pipeline are already pre-filtered by target search
+  let base = 20;
 
-  // Seniority (0-20)
-  let seniority = 0;
-  if (/\bvp\b|vice president/.test(t)) {
-    seniority = 20;
-  } else if (/\bhead of\b|\bfounding\b/.test(t)) {
-    seniority = 18;
-  } else if (/\bdirector\b|\bstaff\b|\bprincipal\b/.test(t)) {
-    seniority = 15;
-  } else if (/\bsenior\b|\bsr\.?\b|\blead\b/.test(t)) {
-    seniority = 10;
-  } else if (/\bmanager\b|\bpm\b/.test(t)) {
-    seniority = 8;
+  // ── Role-type fit (0-40) ──
+  // Primary predictor. Weighted by actual confirmation rates from 600-app dataset.
+  let role = 0;
+  if (/\bhead of\b|\bfounding\b.*\b(head|cpo|cto)\b/i.test(t)) {
+    role = 40; // 27.3% conf — matches CPO background perfectly
+  } else if (/\bdirector\b/i.test(t)) {
+    role = 37; // 21.4% conf — strong leadership match
+  } else if (/\bvp\b|vice president/i.test(t)) {
+    role = 36; // 20.0% conf — executive-level match
+  } else if (/\bsolutions?\s*(architect|engineer|consultant)/i.test(t)) {
+    role = 36; // 11.3% conf — best non-leadership role, strong profile fit
+  } else if (/\bforward.deployed/i.test(t)) {
+    role = 34; // 7.2% conf — strong brand fit, 8/111 confirmed
+  } else if (/\bstaff\b|\bprincipal\b/i.test(t)) {
+    role = 30; // 11.2% conf
+  } else if (/\btpm\b|\btechnical program/i.test(t)) {
+    role = 28; // 11.1% conf
+  } else if (/\bsenior\b.*\bproduct\s*manag/i.test(t)) {
+    role = 26; // 8.8% conf — seniority helps PM roles
+  } else if (/\bsenior\b|\bsr\.?\b|\blead\b/i.test(t)) {
+    role = 22; // ~10% conf for senior eng
+  } else if (/\bmanager\b/i.test(t)) {
+    role = 15;
+  } else if (/\bproduct\s*manag|\bpm\b/i.test(t)) {
+    role = 10; // 0.9% conf — highly competitive, poor conversion
   } else {
-    seniority = 5;
+    role = 12;
   }
 
-  // Industry fit (0-15)
-  let industry = 5;
-  if (/\bai\b|\bml\b|llm|machine learning|computer vision/.test(combined)) {
-    industry = 15;
-  } else if (/saas|platform|data|analytics|cloud/.test(combined)) {
-    industry = 10;
+  // ── AI/ML domain alignment (0-20) ──
+  // User's differentiator: AI product building with real production experience
+  let ai = 0;
+  if (/\bai\b|\bartificial intelligence/i.test(t)) {
+    ai += 10;
   }
+  if (/\bml\b|\bmachine learning/i.test(t)) {
+    ai += 8;
+  }
+  if (/\bllm\b|\blarge language/i.test(t)) {
+    ai += 8;
+  }
+  if (/\bgenai\b|\bgenerative\s*ai/i.test(t)) {
+    ai += 8;
+  }
+  if (/\bcomputer vision/i.test(t)) {
+    ai += 6;
+  }
+  if (/\bdata\b.*\b(product|platform)/i.test(t)) {
+    ai += 5;
+  }
+  if (/\bplatform\b/i.test(t)) {
+    ai += 3;
+  }
+  if (/\bsaas\b|\bcloud\b/i.test(combined)) {
+    ai += 2;
+  }
+  ai = Math.min(20, ai);
 
-  // Compensation (0-15) — unknown = 5
-  const comp = 5;
-
-  // Location/mode (0-10)
+  // ── Work mode (0-10) ──
   let location = 5;
   if (job.work_mode === "remote") {
     location = 10;
   } else if (job.work_mode === "hybrid") {
     location = 5;
   } else if (job.work_mode === "on-site") {
-    location = 0;
+    location = 2;
   }
 
-  // Bonuses
-  const fullTimeBonus = job.job_type === "full-time" ? 10 : 0;
-  const remoteBonus = job.work_mode === "remote" ? 5 : 0;
+  // ── Company fit (0-10) ──
+  let companyFit = 0;
+  if (PROVEN_COMPANIES.some((pc) => c.includes(pc))) {
+    companyFit = 10;
+  } else if (/\bai\b|\bml\b|data|analytics|saas|cloud|platform/i.test(c)) {
+    companyFit = 5;
+  }
 
-  const total = Math.min(
-    100,
-    skills + seniority + industry + comp + location + fullTimeBonus + remoteBonus,
-  );
+  // ── Negative signals ──
+  let penalty = 0;
+
+  // Generic PM without AI/seniority modifier — 0.9% conversion
+  if (
+    /\bproduct\s*manag/i.test(t) &&
+    !/\bai\b|\bml\b|\bdata\b|\bplatform\b|\binfra/i.test(t) &&
+    !/\bsenior\b|\bstaff\b|\bprincipal\b|\bdirector\b|\bhead\b|\bvp\b/i.test(t)
+  ) {
+    penalty += 20;
+  }
+
+  // Pure coding roles with language-specific requirements in title
+  if (/\bjava\b(?!script)|\bc\+\+|\brust\b|\bscala\b|\bkotlin\b|\bswift\b/i.test(t)) {
+    penalty += 15;
+  }
+
+  // Junior/intern — overqualified
+  if (/\bjunior\b|\bintern\b|\bentry[- ]?level\b|\bassociate\b/i.test(t)) {
+    penalty += 25;
+  }
+
+  // Roles requiring deep hands-on coding (description-based when available)
+  if (desc.length > 50) {
+    if (
+      /\b(?:8|10|12|15)\+?\s*years?\s*(?:of\s*)?(?:hands[- ]?on|coding|programming|software engineering)\b/i.test(
+        desc,
+      )
+    ) {
+      penalty += 10;
+    }
+  }
+
+  const total = Math.max(0, Math.min(100, base + role + ai + location + companyFit - penalty));
   return total;
 }
 
@@ -157,12 +205,37 @@ function estimateSalary(job) {
 
 // ── Fetch + update ─────────────────────────────────────────────────────────
 
+const RESCORE_ALL = process.argv.includes("--rescore-all");
+
 async function fetchJobs() {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/jobs?match_score=is.null&select=id,title,company,platform,job_type,work_mode,salary_min,salary_max&limit=500`,
-    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } },
-  );
-  return res.json();
+  const select = "id,title,company,platform,job_type,work_mode,salary_min,salary_max,description";
+  const filter = RESCORE_ALL ? "" : "&match_score=is.null";
+  // Fetch in chunks to avoid PostgREST header overflow
+  const allJobs = [];
+  let offset = 0;
+  const limit = 200;
+  while (true) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/jobs?select=${select}${filter}&limit=${limit}&offset=${offset}&order=created_at.desc`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Prefer: "count=exact",
+        },
+      },
+    );
+    const chunk = await res.json();
+    if (!Array.isArray(chunk) || chunk.length === 0) {
+      break;
+    }
+    allJobs.push(...chunk);
+    if (chunk.length < limit) {
+      break;
+    }
+    offset += limit;
+  }
+  return allJobs;
 }
 
 async function updateJob(id, patch) {
@@ -184,31 +257,46 @@ async function updateJob(id, patch) {
 
 async function main() {
   const jobs = await fetchJobs();
-  console.log(`Scoring ${jobs.length} unscored jobs...`);
+  console.log(`${RESCORE_ALL ? "Rescoring" : "Scoring"} ${jobs.length} jobs (v2 algorithm)...`);
 
   let ok = 0,
-    failed = 0;
+    failed = 0,
+    changed = 0;
   for (const job of jobs) {
-    const score = scoreJob(job);
+    const newScore = scoreJob(job);
+    const oldScore = job.match_score;
     const salary = estimateSalary(job);
-    const patch = { match_score: score };
+    const patch = { match_score: newScore };
     if (salary) {
       patch.salary_min = salary[0];
       patch.salary_max = salary[1];
     }
 
+    // Skip if score unchanged (rescore mode)
+    if (RESCORE_ALL && oldScore === newScore && !salary) {
+      ok++;
+      continue;
+    }
+
     try {
       await updateJob(job.id, patch);
       ok++;
+      if (oldScore != null && oldScore !== newScore) {
+        changed++;
+      }
+      const delta =
+        oldScore != null
+          ? ` (was ${oldScore}, ${newScore > oldScore ? "+" : ""}${newScore - oldScore})`
+          : "";
       const salaryStr = salary ? `  $${salary[0] / 1000}k-$${salary[1] / 1000}k` : "";
-      console.log(`  [${score}] ${job.title} @ ${job.company}${salaryStr}`);
+      console.log(`  [${newScore}]${delta} ${job.title} @ ${job.company}${salaryStr}`);
     } catch (err) {
       console.error(`  FAIL: ${job.title} — ${err.message}`);
       failed++;
     }
   }
 
-  console.log(`\nDone: ${ok} scored, ${failed} failed.`);
+  console.log(`\nDone: ${ok} scored, ${changed} changed, ${failed} failed.`);
 }
 
 main().catch(console.error);
