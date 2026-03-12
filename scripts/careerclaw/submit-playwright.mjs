@@ -634,12 +634,46 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           await forceCheck(el);
         } else if (/^not applicable.*none of the above/i.test(lbl.trim())) {
           // "Not applicable (i.e., I selected 'none of the above')" — skip; we have a real answer
+        } else if (
+          /no.{0,5}(do not|will not|don.t).{0,15}(need|require).{0,10}(visa|sponsor)/i.test(
+            lbl.trim(),
+          )
+        ) {
+          // "No, I do not and will not need a visa sponsorship" checkbox
+          await forceCheck(el);
+        } else if (/^no.{0,3}i (do not|don.t|will not).{0,20}(sponsor|visa)/i.test(lbl.trim())) {
+          // Alternate phrasing: "No, I don't require visa sponsorship"
+          await forceCheck(el);
+        } else if (/^yes.{0,5}(i am|currently).{0,15}(based|located|reside)/i.test(lbl.trim())) {
+          // "Yes, I am currently based in [location]" checkbox
+          await forceCheck(el);
         }
         continue;
       }
       if (isRadio) {
+        // Handle radio button groups — not as rare as originally assumed
+        const lblLower = lbl.trim().toLowerCase();
+        if (
+          /no.{0,5}(do not|will not|don.t).{0,15}(need|require).{0,10}(visa|sponsor)/i.test(
+            lblLower,
+          ) ||
+          /^no.{0,3}i (do not|don.t|will not).{0,20}(sponsor|visa)/i.test(lblLower)
+        ) {
+          await el.check().catch(() => {});
+        } else if (
+          /^yes.{0,5}(i am|currently).{0,15}(authorized|eligible|legally)/i.test(lblLower)
+        ) {
+          // "Yes, I am authorized to work in the US"
+          await el.check().catch(() => {});
+        } else if (/^yes.{0,5}(i am|currently).{0,15}(based|located|reside)/i.test(lblLower)) {
+          // "Yes, I am currently based in [location]"
+          await el.check().catch(() => {});
+        } else if (/^no$/i.test(lblLower) || /^yes$/i.test(lblLower)) {
+          // Generic Yes/No radios — context from parent question determines answer
+          // Skip generic radios (too risky without context)
+        }
         continue;
-      } // rare on GH
+      }
 
       if (isReactSelect) {
         // ─── React Select dropdowns ───────────────────────────────────────────
@@ -1389,7 +1423,12 @@ async function fillGhForm(page, coverLetter, companyName = "unknown") {
           const prof = loadProfile().professional;
           await el.fill(prof.current_title || "").catch(() => {});
         } else if (/start.*year|year.*start/i.test(lbl)) {
-          await el.fill("2023").catch(() => {});
+          // Disambiguate: "Start date year" (availability) vs "Year you started" (employment history)
+          // If label mentions "earliest", "available", "can you", or stands alone as "Start date year" → current year
+          // If label is in work history context (near "company", "title", "employer") → 2023
+          const isAvailability =
+            /earliest|available|can you|start date year|when.*start.*year/i.test(lbl);
+          await el.fill(isAvailability ? "2026" : "2023").catch(() => {});
         } else if (/end.*year|year.*end/i.test(lbl)) {
           // Leave blank (currently employed)
         } else if (
