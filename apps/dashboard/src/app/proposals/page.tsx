@@ -1,8 +1,6 @@
 import { getProposals, getFreelanceJobLeads } from "@/lib/queries";
 import { ProposalsTable } from "./proposals-table";
-import { ScoreBadge } from "@/components/score-badge";
-import { formatDate } from "@/lib/format";
-import type { Job } from "@/lib/database.types";
+import { LeadsTable } from "./leads-table";
 
 export const dynamic = "force-dynamic";
 
@@ -21,99 +19,49 @@ export default async function ProposalsPage({
     getFreelanceJobLeads(),
   ]);
 
+  const highScoreLeads = jobLeads.filter(
+    (l) => (l.match_score ?? 0) >= 80
+  ).length;
+  const recentLeads = jobLeads.filter((l) => {
+    const d = new Date(l.posting_date ?? l.created_at);
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return d >= weekAgo;
+  }).length;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline gap-3">
-        <h1 className="text-sm font-semibold text-neutral-300">
-          Freelance Proposals
-        </h1>
-        <span className="text-xs text-neutral-400">
-          {proposals.length} proposals · {jobLeads.length} leads
-        </span>
+    <div className="space-y-5">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-sm font-semibold text-neutral-300">
+            Freelance Proposals
+          </h1>
+          <span className="text-xs text-neutral-400">
+            {proposals.length} proposals · {jobLeads.length} leads
+          </span>
+        </div>
+        {/* Quick stats */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 rounded bg-neutral-800/60 px-2.5 py-1 border border-neutral-700/40">
+            <span className="text-xs text-neutral-500">This week</span>
+            <span className="text-xs font-semibold text-neutral-200 tabular-nums">
+              {recentLeads}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded bg-neutral-800/60 px-2.5 py-1 border border-neutral-700/40">
+            <span className="text-xs text-neutral-500">80+ score</span>
+            <span className="text-xs font-semibold text-neutral-200 tabular-nums">
+              {highScoreLeads}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Freelance job leads discovered by daily search */}
-      {jobLeads.length > 0 && (
-        <div className="rounded-lg border border-neutral-700/50">
-          <div className="border-b border-neutral-700/50 bg-neutral-800/80 px-3 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-              Discovered Leads — Upwork / Fiverr
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-neutral-700/50 bg-neutral-900/60">
-                <tr>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Score</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Project</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Platform</th>
-                  <th className="px-3 py-2 font-semibold uppercase tracking-wider text-neutral-400">Found</th>
-                  <th className="px-3 py-2 w-6" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {jobLeads.map((job) => (
-                  <JobLeadRow key={job.id} job={job} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      <LeadsTable leads={jobLeads} />
 
       {/* Drafted / submitted proposals */}
-      <ProposalsTable proposals={proposals} />
+      {proposals.length > 0 && <ProposalsTable proposals={proposals} />}
     </div>
-  );
-}
-
-function JobLeadRow({ job }: { job: Job }) {
-  return (
-    <tr className="transition-colors hover:bg-neutral-800/40">
-      <td className="px-3 py-2">
-        <ScoreBadge score={job.match_score} />
-      </td>
-      <td className="px-3 py-2 max-w-xs">
-        <p className="font-medium text-neutral-200 truncate">{job.title}</p>
-        {job.company && (
-          <p className="text-neutral-400 truncate">{job.company}</p>
-        )}
-      </td>
-      <td className="px-3 py-2 capitalize text-neutral-400">{job.platform}</td>
-      <td className="px-3 py-2 tabular-nums text-neutral-400">{formatDate(job.created_at)}</td>
-      <td className="px-3 py-2">
-        {job.url ? (
-          <a
-            href={job.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-neutral-400 hover:text-white transition-colors"
-            title="Open project"
-          >
-            <ExternalLinkIcon className="h-3.5 w-3.5" />
-          </a>
-        ) : (
-          <span className="w-3.5 inline-block" />
-        )}
-      </td>
-    </tr>
-  );
-}
-
-function ExternalLinkIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-      />
-    </svg>
   );
 }

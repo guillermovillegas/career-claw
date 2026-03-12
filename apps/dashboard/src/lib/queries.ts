@@ -384,12 +384,16 @@ export interface ProposalFilters {
   platform?: string;
 }
 
+export type ProposalWithScore = FreelanceProposal & {
+  match_score: number | null;
+};
+
 export async function getProposals(
   filters: ProposalFilters = {}
-): Promise<FreelanceProposal[]> {
+): Promise<ProposalWithScore[]> {
   let query = supabase
     .from("freelance_proposals")
-    .select("*")
+    .select("*, applications(match_score, jobs(match_score))")
     .order("created_at", { ascending: false });
 
   if (filters.platform) {
@@ -401,7 +405,20 @@ export async function getProposals(
 
   const { data, error } = await query;
   if (error) {throw error;}
-  return (data as FreelanceProposal[]) ?? [];
+
+  // Flatten: extract match_score from joined application or its job
+  return ((data ?? []) as (FreelanceProposal & {
+    applications: { match_score: number | null; jobs: { match_score: number | null } | null } | null;
+  })[]).map((row) => {
+    const appScore = row.applications?.match_score;
+    const jobScore = row.applications?.jobs?.match_score;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { applications: _apps, ...rest } = row;
+    return {
+      ...rest,
+      match_score: appScore ?? jobScore ?? null,
+    } as ProposalWithScore;
+  });
 }
 
 // ─── Communication Logs ─────────────────────────────────────────────

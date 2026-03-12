@@ -641,8 +641,7 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
 
   // 2. Cover Letter Generated (if present)
   if (app.cover_letter) {
-    const lines = app.cover_letter.split("\n").filter((l) => l.trim().length > 0);
-    const preview = lines.slice(0, 2).join(" ").slice(0, 160);
+    const wordCount = app.cover_letter.split(/\s+/).filter((w) => w.length > 0).length;
     entries.push({
       key: "cover-letter",
       color: "blue",
@@ -651,12 +650,17 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       sortTime: new Date(app.created_at).getTime() + 1,
       children: (
         <div>
-          <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-blue-500/15 text-blue-400">
-            {app.cover_letter.length.toLocaleString()} chars
-          </span>
-          <p className="mt-1 text-sm text-neutral-400 line-clamp-2">
-            {preview}{preview.length < app.cover_letter.length ? "..." : ""}
-          </p>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-blue-500/15 text-blue-400">
+              {app.cover_letter.length.toLocaleString()} chars / {wordCount} words
+            </span>
+            <CopyButton text={app.cover_letter} />
+          </div>
+          <div className="mt-1.5 max-h-64 overflow-y-auto rounded bg-neutral-900/60 p-2.5">
+            <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-wrap break-words">
+              {app.cover_letter}
+            </p>
+          </div>
         </div>
       ),
     });
@@ -713,16 +717,30 @@ function ApplicationTimeline({ app, commsLogs, automationLogs }: TimelineProps) 
       time: formatDateTime(log.created_at),
       sortTime: new Date(log.created_at).getTime(),
       children: (
-        <div>
+        <div id={`comm-${log.id}`}>
           {log.subject && (
             <p className="text-sm font-medium text-neutral-300">{log.subject}</p>
           )}
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            {log.sentiment && <SentimentBadge sentiment={log.sentiment} />}
+          <div className="mt-0.5 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              {log.sentiment && <SentimentBadge sentiment={log.sentiment} />}
+            </div>
             {log.content_summary && (
-              <p className="text-sm text-neutral-400 line-clamp-1">
+              <p className="text-sm text-neutral-400">
                 {log.content_summary}
               </p>
+            )}
+            {log.full_content && (
+              <details className="mt-1">
+                <summary className="text-xs text-neutral-500 cursor-pointer hover:text-neutral-400">
+                  Show full email body
+                </summary>
+                <div className="mt-1 max-h-48 overflow-y-auto rounded bg-neutral-900/60 p-2">
+                  <pre className="text-xs text-neutral-400 whitespace-pre-wrap break-words font-sans leading-relaxed">
+                    {log.full_content}
+                  </pre>
+                </div>
+              </details>
             )}
           </div>
         </div>
@@ -948,9 +966,10 @@ function CommunicationLogTable({ logs }: { logs: CommunicationLog[] }) {
   return (
     <div className="space-y-2">
       {logs.map((log) => (
-        <div
+        <a
           key={log.id}
-          className="rounded-lg bg-neutral-900/60 p-2.5 space-y-1"
+          href={`#comm-${log.id}`}
+          className="block rounded-lg bg-neutral-900/60 p-2.5 space-y-1 hover:bg-neutral-800/60 transition-colors"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
@@ -967,14 +986,14 @@ function CommunicationLogTable({ logs }: { logs: CommunicationLog[] }) {
             <p className="text-sm text-neutral-300 truncate">{log.subject}</p>
           )}
           {log.content_summary && (
-            <p className="text-sm text-neutral-400 line-clamp-2">
+            <p className="text-sm text-neutral-400">
               {log.content_summary}
             </p>
           )}
           {log.sentiment && (
             <SentimentBadge sentiment={log.sentiment} />
           )}
-        </div>
+        </a>
       ))}
     </div>
   );

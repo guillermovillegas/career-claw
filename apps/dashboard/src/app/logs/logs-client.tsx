@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import Link from "next/link";
 import type { AutomationLog, CommunicationLog } from "@/lib/database.types";
 import type { Json } from "@/lib/database.types";
 import { formatRelativeTime, formatLabel, formatDateTime } from "@/lib/format";
@@ -834,12 +835,23 @@ function CommRow({
           <span className="text-neutral-400 capitalize">
             {log.entity_type}
           </span>
-          <span
-            className="ml-1.5 font-mono text-xs text-neutral-400"
-            title={log.entity_id}
-          >
-            {log.entity_id.slice(0, 8)}
-          </span>
+          {log.entity_type === "application" ? (
+            <Link
+              href={`/applications/${log.entity_id}`}
+              className="ml-1.5 font-mono text-xs text-neutral-300 hover:text-white transition-colors underline underline-offset-2"
+              title={log.entity_id}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {log.entity_id.slice(0, 8)}
+            </Link>
+          ) : (
+            <span
+              className="ml-1.5 font-mono text-xs text-neutral-400"
+              title={log.entity_id}
+            >
+              {log.entity_id.slice(0, 8)}
+            </span>
+          )}
         </td>
         <td className="max-w-xs px-3 py-2">
           {log.subject ? (

@@ -5,6 +5,7 @@ import type { CommunicationLog, CalendarEvent } from "@/lib/database.types";
 import { formatRelativeTime, formatDate, formatDateTime } from "@/lib/format";
 import { ScoreBadge } from "@/components/score-badge";
 import { StatusBadge } from "@/components/status-badge";
+import { DraftReply } from "./draft-reply";
 
 export const dynamic = "force-dynamic";
 
@@ -164,7 +165,7 @@ function ResponseCard({ response, expanded }: { response: ResponseWithComms; exp
           </h4>
           <div className="space-y-1.5">
             {response.comms.slice(0, 10).map((c) => (
-              <CommEntry key={c.id} comm={c} />
+              <CommEntry key={c.id} comm={c} appId={response.id} />
             ))}
             {response.comms.length > 10 && (
               <p className="text-xs text-neutral-500">+ {response.comms.length - 10} more</p>
@@ -218,7 +219,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
   );
 }
 
-function CommEntry({ comm }: { comm: CommunicationLog }) {
+function CommEntry({ comm, appId }: { comm: CommunicationLog; appId: string }) {
   const dirIcon = comm.direction === "inbound" ? "\u2190" : "\u2192";
   return (
     <div className="flex items-start gap-2 text-sm">
@@ -226,7 +227,10 @@ function CommEntry({ comm }: { comm: CommunicationLog }) {
       <div className="min-w-0 flex-1">
         <span className="text-neutral-400 truncate block">{comm.subject ?? "(no subject)"}</span>
         {comm.content_summary && (
-          <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">{comm.content_summary}</p>
+          <p className="text-xs text-neutral-500 mt-0.5">{comm.content_summary}</p>
+        )}
+        {comm.direction === "inbound" && (
+          <DraftReply appId={appId} commLogId={comm.id} />
         )}
       </div>
       <span className="text-xs text-neutral-500 shrink-0">{formatRelativeTime(comm.created_at)}</span>
