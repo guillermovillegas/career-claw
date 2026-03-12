@@ -12,6 +12,7 @@ import https from "https";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { buildCoverLetterPrompt, getCoverLetterConfig } from "../../config/load-profile.mjs";
+import { isBlacklisted } from "./lib/blacklist.mjs";
 import { validateCoverLetterForJob, MIN_CL_LENGTH } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -526,6 +527,9 @@ const seenUrls = new Set();
 const candidates = allJobs
   .filter((j) => {
     if (!j.id || appliedIds.has(j.id)) {
+      return false;
+    }
+    if (isBlacklisted(j.company)) {
       return false;
     }
     if ((j.match_score || 0) < MIN_SCORE) {

@@ -1,0 +1,28 @@
+{
+  "companies": [
+    {
+      "name": "canary technologies",
+      "reason": "Hospitality tech — user directive"
+    },
+    {
+      "name": "mews",
+      "reason": "Hospitality tech — direct investor at current company"
+    },
+    {
+      "name": "cloudbeds",
+      "reason": "Hospitality tech — user directive"
+    },
+    {
+      "name": "agilysys",
+      "reason": "Hospitality tech — user directive"
+    },
+    {
+      "name": "oracle hospitality",
+      "reason": "Hospitality tech — user directive"
+    },
+    {
+      "name": "stayntouch",
+      "reason": "Hospitality tech — user directive"
+    }
+  ]
+}

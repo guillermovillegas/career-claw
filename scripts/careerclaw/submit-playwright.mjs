@@ -26,6 +26,7 @@ import {
   getFormAnswers,
   loadProfile,
 } from "../../config/load-profile.mjs";
+import { isBlacklisted } from "./lib/blacklist.mjs";
 import { checkUrlLiveness } from "./lib/validation.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -3387,6 +3388,9 @@ function isDuplicate(job) {
 // Skip apps where we already applied to same company+role in last 30 days
 const toSubmit = applications.filter((a) => {
   const j = jobMap[a.job_id];
+  if (isBlacklisted(j?.company)) {
+    return false;
+  }
   const platform = j?.url ? detectPlatform(j.url) : null;
   if (!platform || (a.match_score || 0) < MIN_SCORE) {
     return false;
@@ -3424,6 +3428,9 @@ toSubmit.sort((a, b) => {
 
 const manual = applications.filter((a) => {
   const j = jobMap[a.job_id];
+  if (isBlacklisted(j?.company)) {
+    return false;
+  }
   if (isDuplicate(j)) {
     return false;
   }
